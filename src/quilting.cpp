@@ -6,6 +6,7 @@
 // FloatImage quilt_random(FloatImage sample, int outsize, int patchsize) {
     
 //     FloatImage output(outsize, outsize, sample.channels());
+//     srand(time(NULL)); // seed the random number generator
     
 //     // loop over output image by intervals of the patch size
 //     for (int x = 0; x <= output.width() - patchsize; x += patchsize) {
@@ -13,7 +14,6 @@
 //             for (int c = 0; c < output.channels(); c++) {
      
 //                 // randomly pick a patch from sample image by defining its origin (top-left) pixel (making sure the patch won't go out of bands)
-//                 srand(time(NULL)); // seed the random number generator
 //                 int patch_x0 = rand() % (sample.width() - patchsize + 1);
 //                 int patch_y0 = rand() % (sample.height() - patchsize + 1);
 
