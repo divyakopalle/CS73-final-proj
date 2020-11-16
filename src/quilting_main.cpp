@@ -1,24 +1,23 @@
 #include "quilting.h"
 #include "utils.h"
 //#include <math.h>
-
 using namespace std;
 
-// test texture synthesis with random quilting
-// void testRandomQuilting()
-// {
-//     FloatImage stones_sample(DATA_DIR "/input/stones.png");
-//     FloatImage mat_sample(DATA_DIR "/input/mat.png");
+//test texture synthesis with random quilting
+void testRandomQuilting()
+{
+    FloatImage stones_sample(DATA_DIR "/input/stones.png");
+    FloatImage mat_sample(DATA_DIR "/input/mat.png");
     
-//     int outsize = 700;
-//     int patchsize = 50;
+    int outsize = 700;
+    int patchsize = 100;
 
-//     FloatImage stones_random = quilt_random(stones_sample, outsize, patchsize);
-//     // FloatImage mat_random = quilt_random(mat_sample, outsize, patchsize);
+    FloatImage stones_random = quilt_random(stones_sample, outsize, patchsize);
+    FloatImage mat_random = quilt_random(mat_sample, outsize, patchsize);
 
-//     stones_random.write(DATA_DIR "/output/stones_random_synthesis.png");
-//     //mat_random.write(DATA_DIR "/output/mat_random_synthesis.png");
-// }
+    stones_random.write(DATA_DIR "/output/stones_random_synthesis.png");
+    mat_random.write(DATA_DIR "/output/mat_random_synthesis.png");
+}
 
 // //test texture synthesis with simple quilting (overlapping method)
 // void testSimpleQuilting()
@@ -35,7 +34,7 @@ using namespace std;
 int main()
 {
     cout << "compiled" << endl;
-    //testRandomQuilting();
+    testRandomQuilting();
     // testSimpleQuilting();
     
 }
