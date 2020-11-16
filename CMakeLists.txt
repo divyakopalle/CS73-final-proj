@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(a1)
+project(final-proj)
 
 add_subdirectory(src/ext)
 
@@ -31,11 +31,11 @@ add_library(common_lib STATIC
 )
 SOURCE_GROUP("src\\ext\\stb" FILES ${ext_stb_srcs})
 
-set(a1_srcs src/a1_main.cpp src/a1.cpp)                                     # a1
-add_executable(a1 ${a1_srcs})                                               # a1
-target_link_libraries(a1 common_lib)                                        # a1
-SOURCE_GROUP("src" FILES ${a1_srcs})                                        # a1
-                                                                            # a1
+set(final-proj_srcs src/quilting_main.cpp src/quilting.cpp)                                     # final-proj
+add_executable(final-proj ${final-proj_srcs})                                               # final-proj
+target_link_libraries(final-proj common_lib)                                        # final-proj
+SOURCE_GROUP("src" FILES ${final-proj_srcs})                                        # final-proj
+                                                                            # final-proj
 
 # Create the output data directory
-add_custom_command(TARGET a1 POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_SOURCE_DIR}/data/output") # a1
+add_custom_command(TARGET final-proj POST_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_SOURCE_DIR}/data/output") # final-proj
