@@ -24,9 +24,10 @@ using namespace std;
 // //     random_output.write(DATA_DIR "/output/sample-random.png");
 // // }
 
-// // int main()
-// // {
-//     // testRandomQuilting()
-//     // testSimpleQuilting()
+int main()
+{
+    cout << "compiled" << endl;
+    // testRandomQuilting();
+    // testSimpleQuilting();
     
-// // }
+}
