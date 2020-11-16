@@ -1,30 +1,32 @@
+#include "quilting.h"
 
+using namespace std;
 
 // // random placement of blocks
-// FloatImage quilt_random(FloatImage sample, int outsize, int patchsize) {
-//     FloatImage output(outsize, outsize, sample.channels());
-//     srand(time(NULL)); // seed the random number generator
+FloatImage quilt_random(FloatImage sample, int outsize, int patchsize) {
+    FloatImage output(outsize, outsize, sample.channels());
+    srand(time(NULL)); // seed the random number generator
 
-//     // loop over output image by intervals of the patch size
-//     for (int x = 0; x <= output.width() - patchsize; x += patchsize) {
-//         for (int y = 0; y <= output.height() - patchsize; y += patchsize) {
-//             for (int c = 0; c < output.channels(); c++) {
+    // loop over output image by intervals of the patch size
+    for (int x = 0; x <= output.width() - patchsize; x += patchsize) {
+        for (int y = 0; y <= output.height() - patchsize; y += patchsize) {
+            for (int c = 0; c < output.channels(); c++) {
 
-//                 // randomly pick a patch from sample image by defining its origin (top-left) pixel (making sure the patch won't go out of bands)
-//                 int patch_x0 = rand() % (sample.width() - patchsize + 1);
-//                 int patch_y0 = rand() % (sample.height() - patchsize + 1);
+                // randomly pick a patch from sample image by defining its origin (top-left) pixel (making sure the patch won't go out of bands)
+                int patch_x0 = rand() % (sample.width() - patchsize + 1);
+                int patch_y0 = rand() % (sample.height() - patchsize + 1);
 
-//                 // loop over the patch area in the output image and populate it with the corresponding pixels of the randomly sampled patch
-//                 for (int x1 = x; x1 < x + patchsize; x1++) {
-//                     for (int y1 = y; y1 < y + patchsize; y1++) {
-//                         output(x1, y1, c) = sample(patch_x0 + x1 - x, patch_y0 + y1 - y, c);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return output;
-// }
+                // loop over the patch area in the output image and populate it with the corresponding pixels of the randomly sampled patch
+                for (int x1 = x; x1 < x + patchsize; x1++) {
+                    for (int y1 = y; y1 < y + patchsize; y1++) {
+                        output(x1, y1, c) = sample(patch_x0 + x1 - x, patch_y0 + y1 - y, c);
+                    }
+                }
+            }
+        }
+    }
+    return output;
+}
 
 // simple quilting- overlapping method
 

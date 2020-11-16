@@ -6,7 +6,7 @@ using namespace std;
 
 // void testRandomQuilting()
 // {
-//     FloatImage sample(DATA_DIR "/input/sample-texture.png");
+//     FloatImage sample(DATA_DIR "/input/texture1.png");
 //     int outsize=
 //     int patchsize=
 //     FloatImage random_output= quilt_random(sample,outsize,patchsize);
