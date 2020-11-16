@@ -30,6 +30,43 @@ public:
     int channels() const {return m_sizeZ;}
 
 
+    //-----------------------------------------------------------------------
+    //@{ \name Component-wise arithmetic and assignment.
+    //-----------------------------------------------------------------------
+    friend FloatImage operator*(float s, const FloatImage &other);
+    friend FloatImage operator/(float s, const FloatImage &other);
+    friend FloatImage operator+(float s, const FloatImage &other);
+    friend FloatImage operator-(float s, const FloatImage &other);
+
+    FloatImage operator*(float s) const;
+    FloatImage operator/(float s) const {return this->operator*(1.0f/s);}
+    FloatImage operator+(float s) const;
+    FloatImage operator-(float s) const {return this->operator+(-s);}
+
+    FloatImage operator+(const FloatImage &other) const;
+    FloatImage operator-(const FloatImage &other) const;
+    FloatImage operator*(const FloatImage &other) const;
+    FloatImage operator/(const FloatImage &other) const;
+
+    FloatImage & operator+=(float s);
+    FloatImage & operator-=(float s) {return *this += -s;}
+    FloatImage & operator*=(float s);
+    FloatImage & operator/=(float s);
+
+    FloatImage & operator+=(const FloatImage &other);
+    FloatImage & operator-=(const FloatImage &other);
+    FloatImage & operator*=(const FloatImage &other);
+    FloatImage & operator/=(const FloatImage &other);
+    //@}
+
+    //-----------------------------------------------------------------------
+    //@{ \name Image statistics.
+    //-----------------------------------------------------------------------
+    float min() const;
+    float min(int channel) const;
+    float max() const;
+    float max(int channel) const;
+    //@}
 
     //-----------------------------------------------------------------------
     //@{ \name Image I/O.
