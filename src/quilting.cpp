@@ -53,37 +53,109 @@ FloatImage quilt_random(const FloatImage &sample, int outsize, int patchsize) {
 
 // start comparing SSDs to construct output image
 
-// for all pixels out_x in increments of (patch size - overlap) until out.width() - patch_size
+// helper fucntion to find a random sample of 10% of all possible patches, stored as x,y coordinates of the origin
+vector <vector<int>> find_patches(const FloatImage &sample, int patch_size, int tol) {
+    
+    vector <vector<int>> all_pairs; // stores all possible x,y pairs possible
+    vector <vector<int>>> out_pairs;   // stores only the output x,y pairs which are randomly selected
+    int num_patches = floor(sample.height*sample.width)*0.10);  // int that stores the number of patches/pairs that we need to find
+    
+    // loop over every x,y coordinate and save the pair as a vector in all_pairs
+    for (int x=0; x<sample.width()-patch_size; x++){
+        for (int y=0; y<sample.height()-patch.size; y++){
+            vector<int> v {x, y};
+            all_pairs.push_back(v);
+        }
+    }
+    
+    // randomly shuffle the order of all possible pairs of x,y coordinates
+    // not sure if this is the appropriate command, we may need to write a helper function for random shuffling instead
+    std::random_shuffle(all_pairs);
+    
+    // select the first "num_patches number" of x,y pairs to be saved to out_pairs
+    for (int i=0; i<num_patches; i++){
+        out_pairs.push_back(all_pairs[i]);
+    }
+    
+    return out_pairs;
+}
+            
+            
 
-  // for all pixels out_y in increments of (patch size - overlap) until out.height() - patch_size
+FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, int tol=0.10) {
+    
+    FloatImage output(outsize, outsize, sample.channels()); // initialize output image
+    
+    srand(time(NULL));
+    
+    // for all pixels out_x in increments of (patch size - overlap) until out.width() - patch_size
+    for (int out_x = patch_size-overlap; out_x < output.width(); out_x += patch_size) {
 
-    // create vector<float> called SSD_values that holds SSD values of all patches
+        // for all pixels out_y in increments of (patch size - overlap) until out.height() - patch_size
+        for (int out_y = patch_size-overlap; out_y < output.height(); out_y += patch_size) {
 
-    // for all (pat.x,pat.y) pairs in our vector of patches
-      // initialize float patch_SSD to store running sum of SSD for this patch
+            // use find_patches helper function to find x,y coordinates of patches
+            vector<vector<int>> pairs = find_patches(sample, patch_size, tol);
+            
+            // create vector<float> called SSD_values that holds SSD values of all patches
+            vector<float> SSD_values;
 
-       // if out_x > 0
-      // then loop over the overlap of patch left with out right
-        // for x1 from 0 to overlap
-          // for y1 from 0 to patchsize
-           // for each channel
-            // patch_SSD += pow( sample(x1+pat.x, y1+pat.y, c) - output(out_x+x, out_y+y, c), 2)
+            // for all (pat.x,pat.y) pairs in our vector of patches
+            for (int i = 0; i < pairs.size(); i++){
+            
+                // initialize float patch_SSD to store running sum of SSD for this patch
+                float patch_SSD = 0;
 
-      // if out_y > 0
-       // then loop over the overlap of patch top with out bottom
-        // for x1 from 0 to patchsize
-          // for y1 from 0 to overlap
-           // for each channel
-            // patch_SSD += pow( sample(x1+pat.x, y1+pat.y, c) - output(out_x+x, out_y+y, c), 2)
-          // put patch_SSD into  SSD_values
-          // note: link each SSD value to the corresponding patch
+                    // if out_x > 0 then loop over the overlap of patch left with out right
+                if (out_x > 0) {
+                    // for x1 from 0 to overlap
+                    for (int x1=0; x1<overlap; x++){
+                        // for y1 from 0 to patchsize
+                        for (int y1=0; y1<patch_size; y++){
+                            // for each channel
+                            for (int c=0; c<sample.channels(); c++){
+                                // patch_SSD += pow( sample(x1+pat.x, y1+pat.y, c) - output(out_x+x, out_y+y, c), 2)
+                                patch_SSD += pow( sample(x1+pairs[i][0], y1+pairs[i][1], c) - output(out_x+x, out_y+y, c), 2);
+                            }
+                        }
+                    }
+                }
 
-    // find the lowest 10% values in SSD_values
-    // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
-    // for pixels from out_x to out_x + patchsize
-      // for pixels from out_y to out_y + patchsize
-        // output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c)
-
+                // if out_y > 0 then loop over the overlap of patch top with out bottom
+                if (out_y > 0){        
+                    // for x1 from 0 to patchsize
+                    for (int x1=0; x1<patch_size; x1++){
+                        // for y1 from 0 to overlap
+                        for (int y1; y1<overlap; y1++){
+                            // for each channel
+                            for (int c=0; c<sample.channles(); c++){
+                                // patch_SSD += pow( sample(x1+pat.x, y1+pat.y, c) - output(out_x+x, out_y+y, c), 2)
+                                patch_SSD += pow( sample(x1+pairs[i][0], y1+pairs[i][1], c) - output(out_x+x, out_y+y, c), 2);
+                            }
+                        }
+                    }
+                }
+                
+                // put patch_SSD into  SSD_values
+                SSD_values[i] = patch_SSD;
+            }
+            
+            // note: link each SSD value to the corresponding patch??
+            // find the lowest 10% values in SSD_values
+            // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
+            
+                
+            // for pixels from out_x to out_x + patchsize
+            for (int x = 0; x < patch_size; x++){
+                // for pixels from out_y to out_y + patchsize
+                for (int y = 0; y < patch_size: y++){
+                     // output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c)
+                     output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c);
+                }
+            }
+        }
+    }
+}
   
   
 
