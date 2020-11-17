@@ -1,6 +1,11 @@
 /*!
+    \file floatimage.cpp
+    \brief Contains the implementation of a floating-point image class with an arbitrary number of channels
+    \author Wojciech Jarosz
+    
     CS 73/273 Computational Aspects of Digital Photography C++ basecode.
 */
+
 #include "floatimage.h"
 #include "utils.h"
 #include <math.h>
@@ -39,6 +44,12 @@ unsigned char floatToByte(float in)
 	return int(255.0f * clamp(in, 0.0f, 1.0f));
 }
 
+void compareXYDimensions(const FloatImage &im1, const FloatImage &im2)
+{
+	if (im1.sizeX() != im2.sizeX() ||
+		im1.sizeY() != im2.sizeY())
+		throw MismatchedDimensionsException();
+}
 
 } // end namespace
 
@@ -86,6 +97,232 @@ void FloatImage::clear(const vector<float> &channelValues)
 				operator()(x, y, z) = channelValues[z];
 }
 
+FloatImage &FloatImage::operator+=(float s)
+{
+	for (int i = 0; i < size(); ++i)
+		operator()(i) += s;
+	return *this;
+}
+
+FloatImage &FloatImage::operator*=(float s)
+{
+	for (int i = 0; i < size(); ++i)
+		operator()(i) *= s;
+	return *this;
+}
+
+FloatImage &FloatImage::operator/=(float s)
+{
+	if (s == 0.0f)
+		throw DivideByZeroException();
+	return *this *= 1.0f / s;
+}
+
+FloatImage &FloatImage::operator+=(const FloatImage &other)
+{
+	compareXYDimensions(*this, other);
+
+	if (this->channels() == other.channels())
+	{
+		for (int i = 0; i < size(); ++i)
+			operator()(i) += other(i);
+	}
+	else
+	{
+		if (other.channels() != 1)
+			throw MismatchedDimensionsException();
+
+		// if other is a grayscale image, add it to each channel
+		for (int c = 0; c < channels(); c++)
+			for (int y = 0; y < height(); y++)
+				for (int x = 0; x < width(); x++)
+					operator()(x, y, c) += other(x, y, 0);
+	}
+	return *this;
+}
+
+FloatImage &FloatImage::operator-=(const FloatImage &other)
+{
+	compareXYDimensions(*this, other);
+
+	if (this->channels() == other.channels())
+	{
+		for (int i = 0; i < size(); ++i)
+			operator()(i) -= other(i);
+	}
+	else
+	{
+		if (other.channels() != 1)
+			throw MismatchedDimensionsException();
+
+		// if other is a grayscale image, subtract it from each channel
+		for (int c = 0; c < channels(); c++)
+			for (int y = 0; y < height(); y++)
+				for (int x = 0; x < width(); x++)
+					operator()(x, y, c) -= other(x, y, 0);
+	}
+	return *this;
+}
+
+FloatImage &FloatImage::operator*=(const FloatImage &other)
+{
+	compareXYDimensions(*this, other);
+
+	if (this->channels() == other.channels())
+	{
+		for (int i = 0; i < size(); ++i)
+			operator()(i) *= other(i);
+	}
+	else
+	{
+		if (other.channels() != 1)
+			throw MismatchedDimensionsException();
+
+		// if other is a grayscale image, multiply each channel by it
+		for (int c = 0; c < channels(); c++)
+			for (int y = 0; y < height(); y++)
+				for (int x = 0; x < width(); x++)
+					operator()(x, y, c) *= other(x, y, 0);
+	}
+	return *this;
+}
+
+FloatImage &FloatImage::operator/=(const FloatImage &other)
+{
+	compareXYDimensions(*this, other);
+
+	if (this->channels() == other.channels())
+	{
+		for (int i = 0; i < size(); ++i)
+		{
+			if (other(i) == 0.0f)
+				throw DivideByZeroException();
+			operator()(i) /= other(i);
+		}
+	}
+	else
+	{
+		if (other.channels() != 1)
+			throw MismatchedDimensionsException();
+
+		// if other is a grayscale image, divide each channel by it
+		for (int c = 0; c < channels(); c++)
+			for (int y = 0; y < height(); y++)
+				for (int x = 0; x < width(); x++)
+				{
+					if (other(x, y, 0) == 0.0f)
+						throw DivideByZeroException();
+					operator()(x, y, c) /= other(x, y, 0);
+				}
+	}
+	return *this;
+}
+
+FloatImage operator*(float s, const FloatImage &other)
+{
+	FloatImage ret(other);
+	return ret *= s;
+}
+
+FloatImage operator/(float s, const FloatImage &other)
+{
+	FloatImage ret(other.width(), other.height(), other.channels());
+	for (int i = 0; i < ret.size(); ++i)
+	{
+		if (other(i) == 0.0f)
+			throw DivideByZeroException();
+		ret(i) = s / other(i);
+	}
+	return ret;
+}
+
+FloatImage operator+(float s, const FloatImage &other)
+{
+	FloatImage ret(other);
+	return ret += s;
+}
+
+FloatImage operator-(float s, const FloatImage &other)
+{
+	FloatImage ret(other);
+	for (int i = 0; i < ret.size(); ++i)
+		ret(i) = s - ret(i);
+	return ret;
+}
+
+FloatImage FloatImage::operator+(float s) const
+{
+	FloatImage ret(*this);
+	return ret += s;
+}
+
+FloatImage FloatImage::operator*(float s) const
+{
+	FloatImage ret(*this);
+	return ret *= s;
+}
+
+FloatImage FloatImage::operator+(const FloatImage &other) const
+{
+	FloatImage ret(*this);
+	return ret += other;
+}
+
+FloatImage FloatImage::operator-(const FloatImage &other) const
+{
+	FloatImage ret(*this);
+	return ret -= other;
+}
+
+FloatImage FloatImage::operator*(const FloatImage &other) const
+{
+	FloatImage ret(*this);
+	return ret *= other;
+}
+
+FloatImage FloatImage::operator/(const FloatImage &other) const
+{
+	FloatImage ret(*this);
+	return ret /= other;
+}
+
+float FloatImage::min(int c) const
+{
+	float mn = operator()(0, 0, c);
+
+	for (int y = 0; y < height(); y++)
+		for (int x = 0; x < width(); x++)
+			mn = std::min(mn, operator()(x, y, c));
+
+	return mn;
+}
+
+float FloatImage::min() const
+{
+	float mn = 0;
+	for (int c = 0; c < channels(); ++c)
+		mn = std::min(mn, min(c));
+	return mn;
+}
+
+float FloatImage::max(int c) const
+{
+	float mx = operator()(0, 0, c);
+
+	for (int y = 0; y < height(); y++)
+		for (int x = 0; x < width(); x++)
+			mx = std::max(mx, operator()(x, y, c));
+
+	return mx;
+}
+
+float FloatImage::max() const
+{
+	float mx = 0;
+	for (int c = 0; c < channels(); ++c)
+		mx = std::max(mx, max(c));
+	return mx;
+}
 
 bool FloatImage::read(const string &filename)
 {

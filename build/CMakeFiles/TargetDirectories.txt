@@ -1,6 +1,0 @@
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/CMakeFiles/rebuild_cache.dir
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/CMakeFiles/edit_cache.dir
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/CMakeFiles/final-proj.dir
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/CMakeFiles/common_lib.dir
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/src/ext/CMakeFiles/rebuild_cache.dir
-/Users/divyakopalle/Desktop/CS-73/CS73-final-proj/build/src/ext/CMakeFiles/edit_cache.dir
