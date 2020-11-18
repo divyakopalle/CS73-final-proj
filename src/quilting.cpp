@@ -77,6 +77,7 @@ vector <vector<int>> find_patches(const FloatImage &sample, int patch_size) {
     // select the first "num_patches number" of x,y pairs to be saved to out_pairs
     for (int i=0; i<num_patches; i++){
         out_coords.push_back(all_coords[i]);
+       // cout << out_coords[i][0] << "," << out_coords[i][1] << endl;
     }
     
     return out_coords;
@@ -89,7 +90,7 @@ vector <vector<int>> find_patches(const FloatImage &sample, int patch_size) {
 // };
             
 // Perform simple quilting by overlapping patches to minimize SSD in the overlapping regions
-FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, int tol) {
+FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol) {
     
     FloatImage output(out_size, out_size, sample.channels()); // initialize output image
     
@@ -105,14 +106,15 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
 			}
 		}
 	}
-    
-    // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
-    for (int out_x = patch_size-overlap; out_x < output.width() - patch_size; out_x += patch_size) {
-        for (int out_y = patch_size-overlap; out_y < output.height() - patch_size; out_y += patch_size) {
 
-            // use find_patches helper function to get a randomized list (x,y) patch coordinates
-            vector<vector<int>> patches = find_patches(sample, patch_size);
-            
+    // use find_patches helper function to get a randomized list (x,y) patch coordinates
+    vector<vector<int>> patches = find_patches(sample, patch_size);
+    bool first = true;
+    // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
+    for (int out_x = 0; out_x < output.width() - patch_size; out_x += patch_size - overlap) {
+       for (int out_y = 0; out_y < output.height() - patch_size; out_y += patch_size - overlap) {
+            cout << "looping over output image at " << "(" << out_x << ", " << out_y << ")" << endl;
+
             // Vector that holds SSD values of all selected patches
             vector<float> SSD_values;
 
@@ -120,9 +122,10 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
 
             // Loop over all selected patches
             for (int i = 0; i < patches.size(); i++){
+               // cout << "looping over patches" << endl;
             
                 // initialize SSD of the current patch to store running sum of its SSD
-                float patch_SSD = 0;
+                float patch_SSD = 0.f;
 
                 // If we're not bordering the image's left-edge then loop over the overlap of patch-left with output-right
                 if (out_x > 0) {
@@ -132,7 +135,7 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                         for (int y1=0; y1<patch_size; y1++){
                             // for each channel
                             for (int c=0; c<sample.channels(); c++){
-                                patch_SSD += pow( sample(x1+patches[i][0], y1+patches[i][1], c) - output(out_x+x1, out_y+y1, c), 2);
+                                patch_SSD += pow( sample(x1+patches[i][0], y1+patches[i][1], c) - output(out_x-overlap+x1, out_y-overlap+y1, c), 2);
                             }
                         }
                     }
@@ -146,14 +149,15 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                         for (int y1; y1<overlap; y1++){
                             // for each channel
                             for (int c=0; c<sample.channels(); c++){
-                                patch_SSD += pow( sample(x1+patches[i][0], y1+patches[i][1], c) - output(out_x+x1, out_y+y1, c), 2);
+                                patch_SSD += pow( sample(x1+patches[i][0], y1+patches[i][1], c) - output(out_x-overlap+x1, out_y-overlap+y1, c), 2);
                             }
                         }
                     }
                 }
                 
                 // Record SSD for this patch
-                SSD_values[i] = patch_SSD;
+                SSD_values.push_back(patch_SSD);
+                //cout << "SSD:values at" << i << "=" << patch_SSD << endl;
 				// patch_SSD_values.coords = patches[i];
 				// patch_SSD_values.value = patch_SSD;
 				
@@ -163,53 +167,67 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
             // find the lowest 10% values in SSD_values
             // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
             
-			// Sort the SSD_values and patch vectors simultaneously
-			int min = SSD_values[0];
-			int min_idx = 0;
-			for (int i = 0; i < SSD_values.size(); i++) {
-				if (SSD_values[i] < min) {
-					int swap = SSD_values[min_idx];
-					SSD_values[min_idx] = SSD_values[i];
-					SSD_values[i] = swap;
+			// // Sort the SSD_values and patch vectors simultaneously
+			// int min = SSD_values[0];
+			// int min_idx = 0;
+			// for (int i = 0; i < SSD_values.size(); i++) {
+			// 	if (SSD_values[i] < min) {
+			// 		int swap = SSD_values[min_idx];
+			// 		SSD_values[min_idx] = SSD_values[i];
+			// 		SSD_values[i] = swap;
 					
-					vector<int> temp = patches[min_idx];
-					patches[min_idx] = patches[i];
-					patches[i] = temp;
+			// 		vector<int> temp = patches[min_idx];
+			// 		patches[min_idx] = patches[i];
+			// 		patches[i] = temp;
 
-					min_idx = i;
-				}
-			}
+			// 		min_idx = i;
+			// 	}
+			// }
 
 			// IDEA FOR OPTIMIZATION: take global min of SSD and put it into a new vector, then set it in the original vector to be a large number, then grab global min again, repeat
 			vector<vector<int>> best_pairs; 
 
+            //float num = SSD_values.size() * tol;
+            //cout << SSD_values.size() << endl;
+
 			for (int i = 0; i < SSD_values.size() * tol; i++) {
-				float min_idx = 0;
+				int min_idx = 0;
+                //cout << "entered for loop" << endl;
 				for (int j = 0; j < SSD_values.size(); j++) {
 					if (SSD_values[j] >= 0 && SSD_values[j] < SSD_values[min_idx]) {
 						min_idx = j;
+                        //cout << "updated min_idx=" << min_idx << endl;
 					}
 				}
 				best_pairs.push_back(patches[min_idx]);
-				SSD_values[min_idx] = -1; // remove it from consideration
+                cout << SSD_values[i] << endl;
+				SSD_values[min_idx] = 1e7; // remove it from consideration
 			}
 
 
 			// randomly pick a best patch with lowest SSD limited by tolerance
-			int rand_idx = rand() % (SSD_values.size() * tol);
+			int rand_idx = rand() % (int)(SSD_values.size() * tol);
 
-            // for pixels from out_x to out_x + patchsize
-            for (int x = 0; x < patch_size; x++){
-                // for pixels from out_y to out_y + patchsize
-                for (int y = 0; y < patch_size; y++){
-					for (int c = 0; c < output.channels(); c++) {
-                     	// output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c)
-                     	output(out_x + x, out_y + y, c) = sample(patches[rand_idx][0] + x, patches[rand_idx][1] + x, c);
-					}
+            
+        
+            if (first) {
+            if (out_x > 0 || out_y > 0) {
+                // for pixels from out_x to out_x + patchsize
+                for (int x = 0; x < patch_size; x++){
+                    // for pixels from out_y to out_y + patchsize
+                    for (int y = 0; y < patch_size; y++){
+                        for (int c = 0; c < output.channels(); c++) {
+                            // output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c)
+                            output(out_x + x, out_y + y, c) = sample(patches[rand_idx][0] + x, patches[rand_idx][1] + y, c);
+                            first = false;
+                        }
+                    }
                 }
+            }
             }
         }
     }
+    return output;
 }
   
   
