@@ -121,7 +121,7 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                         for (int y1=0; y1<patch_size; y1++){
                             // for each channel
                             for (int c=0; c<sample.channels(); c++){
-                                patch_SSD += pow( sample(patch_x+x1, patch_y+y1, c) - output(out_x-overlap+x1, out_y, c), 2);
+                                patch_SSD += pow( sample(patch_x+x1, patch_y+y1, c) - output(out_x-overlap+x1, out_y+y1, c), 2);
                             }
                         }
                     }
@@ -135,7 +135,7 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                         for (int y1=0; y1<overlap; y1++){
                             // for each channel
                             for (int c=0; c<sample.channels(); c++){
-                                patch_SSD += pow( sample(patch_x+x1, patch_y+y1, c) - output(out_x, out_y-overlap+y1, c), 2);
+                                patch_SSD += pow( sample(patch_x+x1, patch_y+y1, c) - output(out_x+x1, out_y-overlap+y1, c), 2);
                             }
                         }
                     }
