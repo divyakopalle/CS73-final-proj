@@ -100,11 +100,10 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
     // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
     for (int out_x = 0; out_x < output.width() - patch_size; out_x += patch_size - overlap) {
        for (int out_y = 0; out_y < output.height() - patch_size; out_y += patch_size - overlap) {
-            cout << "looping over output image at " << "(" << out_x << ", " << out_y << ")" << endl;
+            cout << "Current position in output image is " << "(" << out_x << ", " << out_y << ")" << endl;
 
             // Vector that holds SSD values of all selected patches
             vector<float> SSD_values;
-
 
             // Loop over all selected patches
             for (int i = 0; i < patches.size(); i++){
@@ -144,14 +143,13 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                 
                 // Record SSD for this patch
                 SSD_values.push_back(patch_SSD);
-                //cout << "SSD:values at" << i << "=" << patch_SSD << endl;
+                //cout << "SSD value for patch " << i << " is " << patch_SSD << endl;
 				
             }
             
             // find the lowest values in SSD_values given by tol (tolerance)
             // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
     
-
 			// repeatedly take the next smallest SSD and put the corresponding patch into a new vector (best patches)
 			vector<vector<int>> best_patches; 
 
@@ -165,13 +163,12 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
 					}
 				}
 				best_patches.push_back(patches[min_idx]);
-                cout << SSD_values[min_idx] << endl;
+                cout << "Considering patch with SSD " << SSD_values[min_idx] << endl;
 				SSD_values[min_idx] = 1e7; // remove it from consideration
 			}
 
 			// randomly pick the index of ONE of the best patches 
 			int rand_idx = rand() % (int)(best_patches.size());
-
             
             if (first) { // for debugging
             if (out_x > 0 || out_y > 0) {
