@@ -82,6 +82,12 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
     
     srand(time(NULL));
 
+    // Make sure patch_size is smaller than sample dimensions
+    if (patch_size > sample.width() || patch_size > sample.height()) {
+      cout << "Error: Patch size must be smaller the sample image dimensions." << endl;
+      exit (1);
+    }
+
 	// Randomly pick an initial patch from sample image and place it in top-left corner of output image
 	int first_patch_x = rand() % (sample.width() - patch_size + 1);
     int first_patch_y = rand() % (sample.height() - patch_size + 1);
@@ -96,10 +102,11 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
 
     // use find_patches helper function to get a randomized list (x,y) patch coordinates
     vector<vector<int>> patches = find_patches(sample, patch_size);
-    bool first = true;
+ 
+    bool debug = true;
     // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
-    for (int out_x = 0; out_x < output.width() - patch_size; out_x += patch_size - overlap) {
-       for (int out_y = 0; out_y < output.height() - patch_size; out_y += patch_size - overlap) {
+    for (int out_x = 0; out_x < output.width()-patch_size; out_x += patch_size - overlap) {
+       for (int out_y = 0; out_y < output.height()-patch_size; out_y += patch_size - overlap) {
             cout << "Current position in output image is " << "(" << out_x << ", " << out_y << ")" << endl;
 
             // Vector that holds SSD values of all selected patches
@@ -144,42 +151,40 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
                 // Record SSD for this patch
                 SSD_values.push_back(patch_SSD);
                 //cout << "SSD value for patch " << i << " is " << patch_SSD << endl;
-				
+                
             }
             
             // find the lowest values in SSD_values given by tol (tolerance)
             // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
     
-			// repeatedly take the next smallest SSD and put the corresponding patch into a new vector (best patches)
-			vector<vector<int>> best_patches; 
+            // repeatedly take the next smallest SSD and put the corresponding patch into a new vector (best patches)
+            vector<vector<int>> best_patches; 
 
-			for (int i = 0; i < SSD_values.size() * tol; i++) {
+            for (int i = 0; i < SSD_values.size() * tol; i++) {
                 int min_idx = 0;
                 //cout << "START" << endl;
-				for (int j = 0; j < SSD_values.size(); j++) {
-					if (SSD_values[j] < SSD_values[min_idx]) {
-						min_idx = j;
+                for (int j = 0; j < SSD_values.size(); j++) {
+                    if (SSD_values[j] < SSD_values[min_idx]) {
+                        min_idx = j;
                         //cout << "updated global min=" << SSD_values[min_idx] << endl;
-					}
-				}
-				best_patches.push_back(patches[min_idx]);
-                cout << "Considering patch with SSD " << SSD_values[min_idx] << endl;
-				SSD_values[min_idx] = 1e7; // remove it from consideration
-			}
+                    }
+                }
+                best_patches.push_back(patches[min_idx]);
+                //cout << "Considering patch with SSD " << SSD_values[min_idx] << endl;
+                SSD_values[min_idx] = 1e7; // remove it from consideration
+            }
 
-			// randomly pick the index of ONE of the best patches 
-			int rand_idx = rand() % (int)(best_patches.size());
+            // randomly pick the index of ONE of the best patches 
+            int rand_idx = rand() % (int)(best_patches.size());
             
-            if (first) { // for debugging
+            // Write this patch to the output image
+            if (debug) {
             if (out_x > 0 || out_y > 0) {
-                // for pixels from out_x to out_x + patchsize
                 for (int x = 0; x < patch_size; x++){
-                    // for pixels from out_y to out_y + patchsize
                     for (int y = 0; y < patch_size; y++){
                         for (int c = 0; c < output.channels(); c++) {
-                            // output(out_x + x, out_y + y, c) = sample(best_pat_x + x, best_pat_y + x, c)
                             output(out_x + x, out_y + y, c) = sample(best_patches[rand_idx][0] + x, best_patches[rand_idx][1] + y, c);
-                            //first = false; // for debugging
+                            //debug = false;
                         }
                     }
                 }
