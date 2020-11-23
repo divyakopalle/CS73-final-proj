@@ -358,35 +358,18 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
 
             // error patches stored in FloatImage error, error patch stores the SSD values of each pixel in the overlap region
             // use error patches to find min boundary cut  
-            // min_boundary(error)
-                //FloatImage cost_image = error;
-                //FloatImage path_image= error;
-                //FloatImage best_image= error;
-                //error patch used to create cost image
-                //for (int x=0; x<overlap; x++){
-                    //for(int y=0; y<patch_size;y++){
-                        //path(x,y,0)=min(cost_image(x-1,y-1,0),cost_image(x-1,y,0),cost_image(x-1,y+1,0);
-                        // cost_image(x,y,0)= error(x,y,0)+path(x,y,0)
-                        
-                    //}
-                //for (int x=0; x<patch_size; x++){
-                    //for(int y=0l y<overlap;y++){
-                        // cost_image(x,y,0)= error(x,y,0)+min(cost_image(x-1,y-1,0),cost_image(x-1,y,0),cost_image(x-1,y+1,0))
-                        //cost_image(x,y,0)= error(x,y,0)+path(x,y,0)
-                    //}
-                    
-               // }
-                // cost patch used to create path image 
-                // best path image is binary and what is returned
-                //return path image                  
+            FloatImage cut_image = min_boundary(error, overlap);           
             // Write this patch to the output image
             if (debug) {
             if (out_x > 0 || out_y > 0) {
                 for (int x = 0; x < patch_size; x++){
                     for (int y = 0; y < patch_size; y++){
                         for (int c = 0; c < output.channels(); c++) {
-                            output(out_x + x, out_y + y, c) = sample(best_patches[rand_idx][0] + x, best_patches[rand_idx][1] + y, c);
-                            //debug = false;
+                            if(cut_image(x,y,0)==1){
+                                output(out_x + x, out_y + y, c) = sample(best_patches[rand_idx][0] + x, best_patches[rand_idx][1] + y, c);
+                            }
+                            
+                            debug = false;
                         }
                     }
                 }
@@ -395,4 +378,72 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
         }
     }
     return output;
+}
+
+FloatImage min_boundary(FloatImage error, int overlap){
+    FloatImage cost_image = error;
+    FloatImage path_image= error;
+    FloatImage best_image(error.width(),error.height(),error.channels()); // will be image that is returned
+    for(int x=0; x<best_image.width();x++){  //initalize all pixels in best_image to 1
+        for(int y=0; y<best_image.height();y++){
+            best_image(x,y,0)=1;
+        }
+    }
+    //error patch used to create cost image
+    for(int y=0; y<error.height();y++){ // calculating cost_image vertical
+            for(int x=0; x<overlap;x++){
+            path_image(x,y,0)=min(cost_image(x-1,y+1,0),cost_image(x,y+1,0),cost_image(x+1,y+1,0);
+            cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
+                        
+     }
+    }
+    for (int x=error.width(); x>0; x--){ // calculating cost_image horizontal
+        for(int y=0;y<overlap;y++){
+                path_image(x,y,0)= min(cost_image(x-1,y-1,0),cost_image(x-1,y,0),cost_image(x-1,y+1,0));
+                cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
+             }
+                    
+    }
+    //iterate through path image
+    for(int y=0; y<error.height();y++){
+                int min_idx= 0;
+            for(int x=0; x<overlap;x++){
+                if(path_image(x,y,0) < path_image(min_idx,y,0)){
+                    min_idx = x; //find min idx which indicates pixel in min cut
+                }
+            //populate best image
+            for(int x=0; x<overlap;x++){
+                if(x< min_idx){
+                    best_image(x,y,0)= 0; //set pixels before min idx to 0
+
+                }
+            
+                        
+            }
+            }
+    }
+    for (int x=error.width(); x>0; x--){
+            int min_idx= 0;
+        for(int y=0;y<overlap;y++){
+                if(path_image(x,y,0) < path_image(x,min_idx,0)){
+                    min_idx = y;
+                }
+            //populate best image
+            for(int y=0; y<overlap;y++){
+                if(y< min_idx){
+                    best_image(x,y,0)= 0;
+
+                }
+ 
+                
+            }
+                    
+    }
+    
+    
+            
+
+    }
+ 
+ return best_image;
 }
