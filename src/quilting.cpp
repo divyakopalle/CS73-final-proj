@@ -391,14 +391,13 @@ FloatImage min_boundary(FloatImage error, int overlap){
     }
     //error patch used to create cost image
     for(int y=0; y<error.height();y++){ // calculating cost_image vertical
-            for(int x=0; x<overlap;x++){
-            path_image(x,y,0)=min(cost_image(x-1,y+1,0),cost_image(x,y+1,0),cost_image(x+1,y+1,0);
-            cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
-                        
-     }
+            for(int x=1; x<overlap;x++){
+            	path_image(x,y,0)=min(cost_image(x-1,y+1,0),cost_image(x,y+1,0),cost_image(x+1,y+1,0);
+            	cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
+    	}
     }
     for (int x=error.width(); x>0; x--){ // calculating cost_image horizontal
-        for(int y=0;y<overlap;y++){
+        for(int y=1;y<overlap;y++){
                 path_image(x,y,0)= min(cost_image(x-1,y-1,0),cost_image(x-1,y,0),cost_image(x-1,y+1,0));
                 cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
              }
