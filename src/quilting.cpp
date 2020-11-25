@@ -488,22 +488,20 @@ FloatImage min_boundary(FloatImage error, int overlap)
         }
     }
     //iterate through path image
-    int path_idx = 1;
     for (int y = 0; y < error.height(); y++)
     {
-        int min_idx = path_idx;
-        for (int x = path_idx - 1; x <= min(path_idx + 1, overlap - 2); x++)
+        int min_idx = 1;
+        for (int x = 1; x < overlap - 1; x++)
         {
             if (path_image(x, y, 0) < path_image(min_idx, y, 0))
             {
-                min_idx = max(0, x); //find min idx which indicates pixel in min cut
+                min_idx = x; //find min idx which indicates pixel in min cut
             }
         }
-        path_idx = min_idx;
         //populate best image
         for (int x = 0; x < overlap - 1; x++)
         {
-            if (x < path_idx)
+            if (x < min_idx)
             {
                 best_path(x, y, 0) = 0; //set pixels before min idx to 0
             }
