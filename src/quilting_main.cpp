@@ -13,7 +13,6 @@ void testRandomQuilting()
     FloatImage toast_sample(DATA_DIR "/input/toast.png");
     FloatImage green_sample(DATA_DIR "/input/green.png");
     FloatImage rice_sample(DATA_DIR "/input/rice.png");
-    
 
     FloatImage stones_random = quilt_random(stones_sample, 500, 100);
     FloatImage mat_random = quilt_random(mat_sample, 500, 100);
@@ -48,7 +47,6 @@ void testSimpleQuilting()
     // float tol = .001;
     // int overlap = 20;
 
-
     FloatImage stones_simple = quilt_simple(stones_sample, 500, 100, 1, 0.2);
     FloatImage mat_simple = quilt_simple(mat_sample, 500, 100, 1, 0.05);
     FloatImage planks_simple = quilt_simple(planks_sample, 500, 100, 5, 0.0001);
@@ -66,10 +64,17 @@ void testSimpleQuilting()
     rice_simple.write(DATA_DIR "/output/rice_simple.png");
 }
 
+void testQuiltCut()
+{
+    FloatImage apples_sample(DATA_DIR "/input/apples.png");
+    FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 15, .001);
+    apples_cut.write(DATA_DIR "/output/apples_cut_15.png");
+}
+
 int main()
 {
     cout << "compiled" << endl;
-    testRandomQuilting();
-    testSimpleQuilting();
-    
+    // testRandomQuilting();
+    // testSimpleQuilting();
+    testQuiltCut();
 }
