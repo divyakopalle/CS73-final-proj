@@ -322,51 +322,57 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
 
             // randomly pick the index of ONE of the best patches 
             int rand_idx = rand() % (int)(best_patches.size());
-             // CHANGES WITH DYNAMIC PROGRAMMING //
+            int chosen_patch_x = best_patches[rand_idx][0];
+            int chosen_patch_y = best_patches[rand_idx][1];
 
-             //save error patch 
-                //patch- existing outputimage
-                //error patch stores SSD Value at each pixel
-                FloatImage error(patch_size , patch_size, 1); 
-                for (int i=0; i<error.size(); i++){
-                    error(i)=0;
+             // CHANGES WITH MINIMUM-ERROR BOUNDARY CUT//
+             //////////////////////////////////////
+
+            // SAVE ERROR PATCH
+            // stores SSD Value at each pixel in overlap region
+            FloatImage error(patch_size, patch_size, 1); 
+            for (int i=0; i<error.size(); i++){
+                error(i)=0;
+            } // initialize to all black pixels
+            
+            // Compute SSD at each pixel in overlap region
+            if (out_x > 0) {
+                for (int x1=0; x1<overlap; x1++){
+                    for (int y1=0; y1<patch_size; y1++){
+                        for (int c=0; c<sample.channels(); c++){
+                            error(x1, y1, 0)+=pow( sample(chosen_patch_x + x1, chosen_patch_y + y1, c) - output(out_x-overlap+x1, out_y+y1, c), 2);
+                        }
+                    }
                 }
-                if (out_x > 0) {
-                    // for x1 from 0 to overlap
-                    for (int x1=0; x1<overlap; x1++){
-                        // for y1 from 0 to patchsize
-                        for (int y1=0; y1<patch_size; y1++){
-                            // for each channel
-                            for (int c=0; c<sample.channels(); c++){
-                                error(x1, y1, 0)+=pow( sample(best_patches[rand_idx][0] +x1, best_patches[rand_idx][1] +y1, c) - output(out_x-overlap+x1, out_y+y1, c), 2);
-                            }
+            } 
+            if (out_y > 0){        
+                for (int x1=0; x1<patch_size; x1++){
+                    for (int y1=0; y1<overlap; y1++){
+                        for (int c=0; c<sample.channels(); c++){ 
+                            error(x1, y1, 0)+= pow( sample(chosen_patch_x + x1, chosen_patch_y + y1, c) - output(out_x-overlap+x1, out_y+y1, c), 2);
                         }
                     }
-                } 
-                 if (out_y > 0){        
-                    // for x1 from 0 to patchsize
-                    for (int x1=0; x1<patch_size; x1++){
-                        // for y1 from 0 to overlap
-                        for (int y1=0; y1<overlap; y1++){
-                            // for each channel
-                            for (int c=0; c<sample.channels(); c++){ 
-                                error(x1, y1, 0)+= pow( sample(best_patches[rand_idx][0] +x1, best_patches[rand_idx][1] +y1, c) - output(out_x-overlap+x1, out_y+y1, c), 2);
-                            }
-                        }
-                    }
-                } 
+                }
+            } 
 
             // error patches stored in FloatImage error, error patch stores the SSD values of each pixel in the overlap region
-            // use error patches to find min boundary cut  
-            FloatImage cut_image = min_boundary(error, overlap);           
+            // Use error patch to find the min-error boundary cut (returned as a binary mask)
+            FloatImage cut_mask; 
+            int edge_case;
+            if (out_x == 0) edge_case = 1;      // case where patch goes in first column
+            else if (out_y == 0) edge_case = 2; // case where patch goes in first row
+            else edge_case = 3;                 // case where patch borders other patches above and to the left
+            cut_mask = min_boundary(error, overlap, edge_case);
+
             // Write this patch to the output image
             if (debug) {
-            if (out_x > 0 || out_y > 0) {
+            // if (out_x > 0 || out_y > 0) {
+            if (out_x > 0) {
                 for (int x = 0; x < patch_size; x++){
                     for (int y = 0; y < patch_size; y++){
                         for (int c = 0; c < output.channels(); c++) {
-                            if(cut_image(x,y,0)==1){
-                                output(out_x + x, out_y + y, c) = sample(best_patches[rand_idx][0] + x, best_patches[rand_idx][1] + y, c);
+                            if(cut_mask(x,y,0)==1){
+                                output(out_x + x, out_y + y, c) = sample(chosen_patch_x + x, chosen_patch_y + y, c);
                             }
                             
                             debug = false;
@@ -380,70 +386,190 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
     return output;
 }
 
-FloatImage min_boundary(FloatImage error, int overlap){
-    FloatImage cost_image = error;
-    FloatImage path_image= error;
-    FloatImage best_image(error.width(),error.height(),error.channels()); // will be image that is returned
-    for(int x=0; x<best_image.width();x++){  //initalize all pixels in best_image to 1
-        for(int y=0; y<best_image.height();y++){
-            best_image(x,y,0)=1;
+// DIJKSTRA'S ALG IMPLEMENTATION OF MIN-ERROR BOUNDARY CUT
+// returns binary mask: white pixels indicate pixels in the patch to be kept, black pixels are cut out
+FloatImage min_boundary(FloatImage error, int overlap, int edge_case){
+
+    // binary mask image to be returned at end of algorithm
+    FloatImage binary_mask(error.width(),error.height(),error.channels());
+    for(int i=0; i<binary_mask.size();i++){  //initalize all pixels in mask to 1
+        binary_mask(i)=1;
+    }
+    
+    // Initialize cost image: will store the cumulative cost to reach each pixel once Dijkstra's algorithm completes
+    FloatImage cost(error.width(),error.height(),error.channels());
+    for (int i = 0; i < cost.size(); i++) {
+        cost(i) = INFINITY; // initialize to infinty to set it up for Dikstra's alg
+    }
+
+
+    // Begin Dijkstra's Algorithm
+
+    // if patch borders other patches above, search for lowest-cost HORIZONTAL path
+    if (edge_case == 1 || edge_case == 3) {
+        //initialize initial pixels' (top right column) costs to be the corresponding error in error image
+        for (int y = 0; y < overlap; y++) {
+            cost(cost.width()-1, y) = error(error.width()-1, y);
         }
     }
-    //error patch used to create cost image
-    for(int y=0; y<error.height();y++){ // calculating cost_image vertical
-            for(int x=0; x<overlap;x++){
-            path_image(x,y,0)=min(cost_image(x-1,y+1,0),cost_image(x,y+1,0),cost_image(x+1,y+1,0);
-            cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
-                        
-     }
-    }
-    for (int x=error.width(); x>0; x--){ // calculating cost_image horizontal
-        for(int y=0;y<overlap;y++){
-                path_image(x,y,0)= min(cost_image(x-1,y-1,0),cost_image(x-1,y,0),cost_image(x-1,y+1,0));
-                cost_image(x,y,0)= error(x,y,0)+path_image(x,y,0);
-             }
-                    
-    }
-    //iterate through path image
-    for(int y=0; y<error.height();y++){
-                int min_idx= 0;
-            for(int x=0; x<overlap;x++){
-                if(path_image(x,y,0) < path_image(min_idx,y,0)){
-                    min_idx = x; //find min idx which indicates pixel in min cut
-                }
-            //populate best image
-            for(int x=0; x<overlap;x++){
-                if(x< min_idx){
-                    best_image(x,y,0)= 0; //set pixels before min idx to 0
 
+    // if patch borders other patches to the left, search for lowest-cost VERTICAL PATH
+    if (edge_case == 2 || edge_case == 3) {
+        //initialize initial pixels' (bottom left row) costs to be the corresponding error in error image
+        for (int x = 0; x < overlap; x++) {
+            cost(x, cost.height()-1) = error(x, error.height()-1);
+        }
+        
+        vector<vector<int>> visited;    // visited pixels
+        vector<vector<int>> toVisit;    // next neighbors to visit
+        vector<int> prev;               // for each pixel, its most updated previous pixel in best path 
+                                        // (for backtracking), STORED AS INDICES, NOT COORDINATES
+
+        // Mark the first bottom row of pixels as pixels to visit
+        for (int x = 0; x < overlap; x++) {
+            toVisit.push_back({x, cost.height()-1});
+        }
+
+        // Initialize all the pixels' prev pixels (stored as indices in upward row-major order)
+        // for backtracking later
+        for (int y = cost.height()-1; y >= 0; y--) {
+            for (int x = 0; x < overlap; x++) {
+                prev.push_back(-1); // -1 indicates a prev that doesn't exist yet
+            }
+        }
+        
+        while (!toVisit.empty()) {
+            // visit the last pixel in the toVisit vector
+            vector<int> curr_pixel = toVisit[toVisit.size()-1]; 
+            int curr_x = curr_pixel[0], curr_y = curr_pixel[1];
+            //if (curr_y == 1) exit(0);
+            //cout << "visiting pixel " << curr_x << "," << curr_y << endl;
+            int curr_idx = xy_to_i_upward(curr_x, curr_y, overlap, cost.height());
+
+            visited.push_back(curr_pixel);
+            toVisit.pop_back(); // don't visit it again
+
+            // FIND THE CURRENT PIXEL'S NEIGHBORS
+            vector<vector<int>> neighbors;
+
+            if (curr_y > 0) {
+                vector<int> top = {curr_x, curr_y-1};
+                neighbors.push_back(top);
+
+                if (curr_x != 0) {              // if not at left edge
+                    vector<int> left = {curr_x-1, curr_y-1};
+                    neighbors.push_back(left);
                 }
+                if (curr_x != overlap - 1) {    // if not at right edge
+                    vector<int> right = {curr_x+1, curr_y-1};
+                    neighbors.push_back(right);
+                }
+            }
             
-                        
-            }
-            }
-    }
-    for (int x=error.width(); x>0; x--){
-            int min_idx= 0;
-        for(int y=0;y<overlap;y++){
-                if(path_image(x,y,0) < path_image(x,min_idx,0)){
-                    min_idx = y;
-                }
-            //populate best image
-            for(int y=0; y<overlap;y++){
-                if(y< min_idx){
-                    best_image(x,y,0)= 0;
+            // LOOP THROUGH THE NEIGHBORS
+            for (int i = 0; i < neighbors.size(); i++) {
+                int nb_x = neighbors[i][0], nb_y = neighbors[i][1];
+                //cout << "   a neighbor is " << nb_x << "," << nb_y << endl;
 
-                }
- 
+                // COMPUTE CUMULATIVE COST TO GET TO NEIGHBOR
+                float cumulative_cost = error(nb_x, nb_y) + cost(curr_x, curr_y);
                 
-            }
-                    
-    }
-    
-    
-            
+                // IF THE COMPUTED CUMULATIVE COST IS LESS THAN THE EXISITNG CUMULATIVE COST, UPDATE IT
+                if (cumulative_cost < cost(nb_x, nb_y)) {
+                    cost(nb_x, nb_y) = cumulative_cost;
 
+                    // ALSO UPDATE THIS NEIGHBOR'S PREV PIXEL TO BE THE CURRENT PIXEL TO TRACE BACK
+                    int nb_idx = xy_to_i_upward(nb_x, nb_y, overlap, cost.height());
+                    prev[nb_idx] = curr_idx;
+                }
+
+                // Only add this neighbor to toVisit if it's not already visited
+                if (find(visited.begin(), visited.end(), neighbors[i]) == visited.end()) {
+                    toVisit.push_back({nb_x, nb_y});
+                }
+            }
+        }
+        cost.write(DATA_DIR "/output/cost.png");
+        for (int y = cost.height()-1; y >= 0; y--) {
+            for (int x = 0; x < overlap; x++) {
+                //cout << "cost(" << x << ", " << y << ") = " << cost(x, y) << endl;
+            } 
+        }
+        
+        // BACKTRACKING
+        // First find the ending pixel (in last row) with lowest cumulative cost
+        int min_idx = 0;
+        int last_pixel;
+        for (int x = 1; x < overlap; x++) {
+            cout << cost(x, 0) << endl;
+            if (cost(x, 0) < cost(min_idx, 0)) {
+                min_idx = x;
+            }
+        }
+        cout << min_idx << endl;
+   
+        last_pixel = xy_to_i_upward(min_idx, 0, overlap, cost.height());
+        cout << last_pixel << endl;
+
+        // Now trace back through prev to build the minimum-cost path
+        vector<int> best_path;
+        best_path.push_back(last_pixel);
+        
+        int prev_pixel = prev[last_pixel];
+        while (prev_pixel != -1) {
+            best_path.push_back(prev_pixel);
+            prev_pixel = prev[prev_pixel];
+        }
+        reverse(best_path.begin(), best_path.end());
+
+        for (int i = 0; i < best_path.size(); i++) {
+            cout << best_path[i] << endl;
+        }
+        // Create binary mask
+        for (int i = 0; i < best_path.size(); i++) {
+            for (int x = 0; x < overlap; x) {
+                vector<int> path_pixel = i_to_xy_upward(i, overlap, cost.height());
+                int path_pixel_x = path_pixel[0], path_pixel_y = path_pixel[1];
+                if (x < path_pixel_x) {
+                    binary_mask(x, i) = 0; // set pixels to the left of the path to 0
+                }
+            }
+        }
     }
- 
- return best_image;
+    return binary_mask;
+}
+
+
+// Converts xy-coordinates to an upward row-major indexing scheme for given grid dimensions
+int xy_to_i_upward(int x, int y, int width, int height)
+{
+    return (height-1-y)*(width) + x;
+}
+
+// Converts xy-coordinates to an leftward column-major indexing scheme for given grid dimensions
+int xy_to_i_leftward(int x, int y, int width, int height)
+{
+    return (width-1-x)*(height) + y;
+}
+
+// Converts index i to xy-coordinates for upward row-major scheme
+vector<int> i_to_xy_upward(int i, int width, int height)
+{
+    vector<int> coordinate;
+    int x = i % width;
+    int y = height - 1 - (i / width);
+    coordinate.push_back(x);
+    coordinate.push_back(y);
+    return coordinate;
+}
+
+// Converts index i to xy-coordinates for leftward row-major scheme
+vector<int> i_to_xy_leftward(int i, int width, int height)
+{
+    vector<int> coordinate;
+    int x = width - 1 - (i / height);
+    int y = i % height;
+    coordinate.push_back(x);
+    coordinate.push_back(y);
+    return coordinate;
 }
