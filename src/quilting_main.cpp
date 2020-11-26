@@ -66,9 +66,17 @@ void testSimpleQuilting()
 
 void testQuiltCut()
 {
-    FloatImage apples_sample(DATA_DIR "/input/apples.png");
-    FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 15, .001);
-    apples_cut.write(DATA_DIR "/output/apples_cut_15.png");
+    FloatImage green_sample(DATA_DIR "/input/green.png");
+    // FloatImage apples_sample(DATA_DIR "/input/apples.png");
+    // FloatImage rice_sample(DATA_DIR "/input/rice.png");
+
+    FloatImage green_cut = quilt_cut(green_sample, 300, 50, 3, 0.001);
+    // FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
+    // FloatImage rice_cut = quilt_cut(rice_sample, 600, 60, 6, 0.001);
+
+    green_cut.write(DATA_DIR "/output/green_cut.png");
+    // apples_cut.write(DATA_DIR "/output/apples_cut.png");
+    // rice_cut.write(DATA_DIR "/output/rice_cut.png");
 }
 
 int main()
@@ -77,4 +85,5 @@ int main()
     // testRandomQuilting();
     // testSimpleQuilting();
     testQuiltCut();
+    
 }
