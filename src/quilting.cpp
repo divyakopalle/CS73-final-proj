@@ -368,6 +368,7 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
             // Write this patch to the output image
             if (debug) {
             if (out_x > 0 || out_y > 0) {
+            //if (out_x > 0)
                 for (int x = 0; x < patch_size; x++){
                     for (int y = 0; y < patch_size; y++){
                         for (int c = 0; c < output.channels(); c++) {
@@ -420,7 +421,7 @@ FloatImage min_boundary(FloatImage error, int overlap, int edge_case){
 
         // Mark the first rightmost column of pixels as pixels to visit
         for (int y = 0; y < overlap; y++) {
-            toVisit.push_back({cost.width()-1, 0});
+            toVisit.push_back({cost.width()-1, y});
         }
 
         // Initialize all the pixels' prev pixels (stored as indices in leftward column-major order)
@@ -431,15 +432,16 @@ FloatImage min_boundary(FloatImage error, int overlap, int edge_case){
             }
         }
         
+        // As long as there are pixels to visit
         while (!toVisit.empty()) {
-            // visit the first pixel in the toVisit vector
+            // visit the last pixel in the toVisit vector
             vector<int> curr_pixel = toVisit[toVisit.size()-1]; 
             int curr_x = curr_pixel[0], curr_y = curr_pixel[1];
             //cout << "visiting pixel " << curr_x << "," << curr_y << endl;
             int curr_idx = xy_to_i_leftward(curr_x, curr_y, cost.width(), overlap);
 
             visited.push_back(curr_pixel);
-            toVisit.pop_back();
+            toVisit.pop_back(); // don't visit it again
 
             // FIND THE CURRENT PIXEL'S NEIGHBORS
             vector<vector<int>> neighbors;
