@@ -69,13 +69,13 @@ void testSimpleQuilting()
 void testQuiltCut()
 {
     FloatImage green_sample(DATA_DIR "/input/green.png");
-    //FloatImage apples_sample(DATA_DIR "/input/apples.png");
+    FloatImage apples_sample(DATA_DIR "/input/apples.png");
 
-    FloatImage green_cut = quilt_cut(green_sample, 300, 50, 10, 0.01);
-    //FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 15, .001);
+    FloatImage green_cut = quilt_cut(green_sample, 300, 50, 15, 0.0001);
+    FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
 
     green_cut.write(DATA_DIR "/output/green_cut.png");
-    //apples_cut.write(DATA_DIR "/output/apples_cut_15.png");
+    apples_cut.write(DATA_DIR "/output/apples_cut.png");
 }
 
 int main()
