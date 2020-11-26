@@ -7,5 +7,5 @@
 
 FloatImage corr_map(const FloatImage &source);
 
-FloatImage texture_transfer(const FloatImage &sample, const FloatImage &target, 
-    int out_size, int patch_size, int overlap, float tol, float alpha)
+FloatImage transfer(const FloatImage &sample, const FloatImage &target, 
+    int out_size, int patch_size, int overlap, float tol, float alpha);

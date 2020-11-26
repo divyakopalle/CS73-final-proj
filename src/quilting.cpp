@@ -644,6 +644,7 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case){
         }
     }
     binary_mask.write(DATA_DIR "/output/mask.png");
+    //cout << edge_case << endl;
     return binary_mask;
 }
 
