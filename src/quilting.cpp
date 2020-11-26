@@ -389,7 +389,7 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
 
 // DIJKSTRA'S ALG IMPLEMENTATION OF MIN-ERROR BOUNDARY CUT
 // returns binary mask: white pixels indicate pixels in the patch to be kept, black pixels are cut out
-FloatImage min_boundary(FloatImage error, int overlap, int edge_case){
+FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case){
 
     // binary mask image to be returned at end of algorithm
     FloatImage binary_mask(error.width(),error.height(),error.channels());

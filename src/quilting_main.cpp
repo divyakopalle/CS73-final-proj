@@ -1,5 +1,6 @@
 #include "quilting.h"
 #include "utils.h"
+#include "transfer.h"
 //#include <math.h>
 using namespace std;
 
@@ -81,11 +82,28 @@ void testQuiltCut()
     // rice_cut.write(DATA_DIR "/output/rice_cut.png");
 }
 
+void testTransfer()
+{
+    // FloatImage green_sample(DATA_DIR "/input/green.png");
+    // FloatImage apples_sample(DATA_DIR "/input/apples.png");
+    FloatImage rice_sample(DATA_DIR "/input/rice.png");
+    FloatImage face_sample(DATA_DIR "/input/face.png");
+
+    // FloatImage green_cut =quilt(green_sample, 300, 50, 3, 0.001) ;
+    // FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
+    FloatImage rice_transfer = texture_transfer(rice_sample, face_sample, 500, 40, 6, .001, .5f);
+
+    // green_cut.write(DATA_DIR "/output/green_cut.png");
+    // apples_cut.write(DATA_DIR "/output/apples_cut.png");
+    rice_transfer.write(DATA_DIR "/output/rice_transfer.png");
+}
+
 int main()
 {
     cout << "compiled" << endl;
     // testRandomQuilting();
     // testSimpleQuilting();
-    testQuiltCut();
+    //testQuiltCut();
+    testTransfer();
     
 }
