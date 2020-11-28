@@ -13,7 +13,6 @@ void testRandomQuilting()
     FloatImage toast_sample(DATA_DIR "/input/toast.png");
     FloatImage green_sample(DATA_DIR "/input/green.png");
     FloatImage rice_sample(DATA_DIR "/input/rice.png");
-    
 
     FloatImage stones_random = quilt_random(stones_sample, 500, 100);
     FloatImage mat_random = quilt_random(mat_sample, 500, 100);
@@ -48,22 +47,21 @@ void testSimpleQuilting()
     // float tol = .001;
     // int overlap = 20;
 
-
     FloatImage stones_simple = quilt_simple(stones_sample, 500, 100, 1, 0.2);
-    FloatImage mat_simple = quilt_simple(mat_sample, 500, 100, 1, 0.05);
-    FloatImage planks_simple = quilt_simple(planks_sample, 500, 100, 5, 0.0001);
-    FloatImage apples_simple = quilt_simple(apples_sample, 500, 75, 5, 0.001);
-    FloatImage toast_simple = quilt_simple(toast_sample, 500, 100, 5, 0.01);
-    FloatImage green_simple = quilt_simple(green_sample, 300, 50, 1, 0.01);
-    FloatImage rice_simple = quilt_simple(rice_sample, 300, 60, 2, 0.001);
+    // FloatImage mat_simple = quilt_simple(mat_sample, 500, 100, 1, 0.05);
+    // FloatImage planks_simple = quilt_simple(planks_sample, 500, 100, 5, 0.0001);
+    // FloatImage apples_simple = quilt_simple(apples_sample, 500, 75, 5, 0.001);
+    // FloatImage toast_simple = quilt_simple(toast_sample, 500, 100, 5, 0.01);
+    // FloatImage green_simple = quilt_simple(green_sample, 300, 50, 1, 0.01);
+    // FloatImage rice_simple = quilt_simple(rice_sample, 300, 60, 2, 0.001);
 
     stones_simple.write(DATA_DIR "/output/stones_simple.png");
-    mat_simple.write(DATA_DIR "/output/mat_simple.png");
-    planks_simple.write(DATA_DIR "/output/planks_simple.png");
-    apples_simple.write(DATA_DIR "/output/apples_simple.png");
-    toast_simple.write(DATA_DIR "/output/toast_simple.png");
-    green_simple.write(DATA_DIR "/output/green_simple.png");
-    rice_simple.write(DATA_DIR "/output/rice_simple.png");
+    // mat_simple.write(DATA_DIR "/output/mat_simple.png");
+    // planks_simple.write(DATA_DIR "/output/planks_simple.png");
+    // apples_simple.write(DATA_DIR "/output/apples_simple.png");
+    // toast_simple.write(DATA_DIR "/output/toast_simple.png");
+    // green_simple.write(DATA_DIR "/output/green_simple.png");
+    // rice_simple.write(DATA_DIR "/output/rice_simple.png");
 }
 
 void testQuiltCut()
@@ -71,14 +69,18 @@ void testQuiltCut()
     FloatImage green_sample(DATA_DIR "/input/green.png");
     FloatImage apples_sample(DATA_DIR "/input/apples.png");
     FloatImage rice_sample(DATA_DIR "/input/rice.png");
+    FloatImage type_sample(DATA_DIR "/input/type.png");
 
-    FloatImage green_cut = quilt_cut(green_sample, 300, 50, 13, 0.001);
+    // FloatImage green_cut = quilt_cut(green_sample, 300, 50, 3, 0.001);
     FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
-    FloatImage rice_cut = quilt_cut(rice_sample, 400, 60, 3, 0.001);
+    // FloatImage type_cut = quilt_cut(type_sample, 550, 75, 5, .001);
 
-    green_cut.write(DATA_DIR "/output/green_cut.png");
+    // FloatImage rice_cut = quilt_cut(rice_sample, 400, 60, 3, 0.001);
+
+    // green_cut.write(DATA_DIR "/output/green_cut.png");
     apples_cut.write(DATA_DIR "/output/apples_cut.png");
-    rice_cut.write(DATA_DIR "/output/rice_cut.png");
+    // rice_cut.write(DATA_DIR "/output/rice_cut.png");
+    // type_cut.write(DATA_DIR "/output/type_cut.png");
 }
 
 void testTransfer()
@@ -103,6 +105,5 @@ int main()
     // testRandomQuilting();
     // testSimpleQuilting();
     testQuiltCut();
-    testTransfer();
-    
+    // testTransfer();
 }
