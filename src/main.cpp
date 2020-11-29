@@ -69,18 +69,47 @@ void testQuiltCut()
     FloatImage green_sample(DATA_DIR "/input/green.png");
     FloatImage apples_sample(DATA_DIR "/input/apples.png");
     FloatImage rice_sample(DATA_DIR "/input/rice.png");
-    FloatImage type_sample(DATA_DIR "/input/type.png");
+    FloatImage planks_sample(DATA_DIR "/input/planks.png");
+    // FloatImage type_sample(DATA_DIR "/input/type.png");
 
-    // FloatImage green_cut = quilt_cut(green_sample, 300, 50, 3, 0.001);
-    FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
-    // FloatImage type_cut = quilt_cut(type_sample, 550, 75, 5, .001);
+    FloatImage green_cut = quilt_cut(green_sample, 300, 60, 10, 0.001);
+    // FloatImage apples_cut = quilt_cut(apples_sample, 300, 75, 5, .001);
+    // FloatImage rice_cut = quilt_cut(rice_sample, 400, 60, 10, 0.001);
+    //FloatImage planks_cut = quilt_cut(planks_sample, 400, 60, 10, 0.001);
 
-    // FloatImage rice_cut = quilt_cut(rice_sample, 400, 60, 3, 0.001);
-
-    // green_cut.write(DATA_DIR "/output/green_cut.png");
-    apples_cut.write(DATA_DIR "/output/apples_cut.png");
+    green_cut.write(DATA_DIR "/output/green_cut.png");
+    // apples_cut.write(DATA_DIR "/output/apples_cut.png");
     // rice_cut.write(DATA_DIR "/output/rice_cut.png");
+    //planks_cut.write(DATA_DIR "/output/planks_cut.png");
+
     // type_cut.write(DATA_DIR "/output/type_cut.png");
+}
+
+void help()
+{
+    FloatImage test_error = FloatImage(20, 50, 1);
+    for (int i = 0; i < test_error.size(); i++) {
+        test_error(i) = 0;
+    }
+    for (int y = 0; y < test_error.height(); y++) {
+        test_error(5, y) = .5;
+    }
+    test_error.write(DATA_DIR "/output/test_error.png");
+
+    // FloatImage cost(error.width(), error.height(), error.channels());
+    // for (int i = 0; i < cost.size(); i++)
+    // {
+    //     cost(i) = INFINITY; // initialize to infinty to set it up for Dikstra's alg
+    // }
+
+    //find_paths(error, cost, 20, 50, 20);
+    FloatImage test_mask = min_boundary(test_error, 20, 3);
+
+    test_mask.write(DATA_DIR "/output/test_mask.png");
+    //FloatImage error_cut = quilt_cut(error, 50, 26, 10, 0.00001);
+    //error_cut.write(DATA_DIR "/output/test_cut.png");
+
+    
 }
 
 void testTransfer()
@@ -106,4 +135,5 @@ int main()
     // testSimpleQuilting();
     testQuiltCut();
     // testTransfer();
+    //help();
 }

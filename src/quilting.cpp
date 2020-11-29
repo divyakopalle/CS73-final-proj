@@ -4,7 +4,9 @@
 #include <assert.h>
 #include <iostream>
 #include <cstdlib>
-#include <deque>
+#include <queue>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -312,38 +314,49 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
             // SAVE ERROR PATCH
             // stores SSD Value at each pixel in overlap region
             FloatImage error(patch_size, patch_size, 1);
-            for (int i = 0; i < error.size(); i++)
-            {
+            for (int i = 0; i < error.size(); i++) {
                 error(i) = 0;
             } // initialize to all black pixels
 
             // Compute SSD at each pixel in overlap region
-            if (out_x > 0)
-            {
-                for (int x1 = 0; x1 < overlap; x1++)
-                {
-                    for (int y1 = 0; y1 < patch_size; y1++)
-                    {
-                        for (int c = 0; c < sample.channels(); c++)
-                        {
-                            error(x1, y1, 0) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) - output(out_x - overlap + x1, out_y + y1, c), 2);
+            if (out_x > 0) {
+                for (int x1 = 0; x1 < overlap; x1++) {
+                    for (int y1 = 0; y1 < patch_size; y1++) {
+                        for (int c = 0; c < sample.channels(); c++) {
+                            error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
+                                             - output(out_x - overlap + x1, out_y + y1, c), 2);
                         }
                     }
                 }
             }
-            if (out_y > 0)
-            {
-                for (int x1 = 0; x1 < patch_size; x1++)
-                {
-                    for (int y1 = 0; y1 < overlap; y1++)
-                    {
-                        for (int c = 0; c < sample.channels(); c++)
-                        {
-                            error(x1, y1, 0) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) - output(out_x - overlap + x1, out_y + y1, c), 2);
+            if (out_y > 0) {
+                for (int x1 = 0; x1 < patch_size; x1++) {
+                    for (int y1 = 0; y1 < overlap; y1++) {
+                        for (int c = 0; c < sample.channels(); c++) {
+                            error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
+                                             - output(out_x + x1, out_y - overlap + y1, c), 2);
                         }
                     }
                 }
             }
+            // if (out_x > 0 && out_y > 0) {
+            //     for (int x1 = 0; x1 < overlap; x1++) {
+            //         for (int y1 = 0; y1 < patch_size; y1++) {
+            //             for (int c = 0; c < sample.channels(); c++) {
+            //                 error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
+            //                                  - output(out_x - overlap + x1, out_y + y1, c), 2);
+            //             }
+            //         }
+            //     }
+            //     for (int x1 = overlap; x1 < patch_size; x1++) {
+            //         for (int y1 = 0; y1 < overlap; y1++) {
+            //             for (int c = 0; c < sample.channels(); c++) {
+            //                 error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
+            //                                  - output(out_x + x1, out_y - overlap + y1, c), 2);
+            //             }
+            //         }
+            //     }
+            // }
 
             // error patches stored in FloatImage error, error patch stores the SSD values of each pixel in the overlap region
             // Use error patch to find the min-error boundary cut (returned as a binary mask)
@@ -364,14 +377,10 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
                 if (out_x > 0 || out_y > 0)
                 {
                     //if (out_x > 0)
-                    for (int x = 0; x < patch_size; x++)
-                    {
-                        for (int y = 0; y < patch_size; y++)
-                        {
-                            for (int c = 0; c < output.channels(); c++)
-                            {
-                                if (cut_mask(x, y, 0) == 1)
-                                {
+                    for (int x = 0; x < patch_size; x++) {
+                        for (int y = 0; y < patch_size; y++) {
+                            for (int c = 0; c < output.channels(); c++) {
+                                if (cut_mask(x, y, 0) != 0) {
                                     output(out_x + x, out_y + y, c) = sample(chosen_patch_x + x, chosen_patch_y + y, c);
                                 }
                                 // if (out_x > 0 && out_y > 0)
@@ -388,310 +397,12 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
     return output;
 }
 
-// DIJKSTRA'S ALG IMPLEMENTATION OF MIN-ERROR BOUNDARY CUT
-// returns binary mask: white pixels indicate pixels in the patch to be kept, black pixels are cut out
-// FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
-// {
-
-//     // binary mask image to be returned at end of algorithm
-//     FloatImage binary_mask(error.width(), error.height(), error.channels());
-//     for (int i = 0; i < binary_mask.size(); i++)
-//     { //initalize all pixels in mask to 1
-//         binary_mask(i) = 1;
-//     }
-
-//     // Initialize cost image: will store the cumulative cost to reach each pixel once Dijkstra's algorithm completes
-//     FloatImage cost(error.width(), error.height(), error.channels());
-//     for (int i = 0; i < cost.size(); i++)
-//     {
-//         cost(i) = INFINITY; // initialize to infinty to set it up for Dikstra's alg
-//     }
-//(error).write(DATA_DIR "/output/error.png");
-
-// Begin Dijkstra's Algorithm
-
-// // if patch borders other patches above, search for lowest-cost HORIZONTAL path
-// if (edge_case == 1 || edge_case == 3)
-// {
-//     //initialize initial pixels' (top right column) costs to be the corresponding error in error image
-//     for (int y = 0; y < overlap; y++)
-//     {
-//         cost(cost.width() - 1, y) = error(error.width() - 1, y);
-//     }
-
-//     vector<vector<int>> visited; // visited pixels
-//     deque<vector<int>> toVisit;  // next neighbors to visit
-//     vector<int> prev;            // for each pixel, its most updated previous pixel in best path
-//                                  // (for backtracking), STORED AS INDICES, NOT COORDINATES
-
-//     // Mark the first rightmost column of pixels as pixels to visit
-//     for (int y = 0; y < overlap; y++)
-//     {
-//         toVisit.push_back({cost.width() - 1, y});
-//     }
-
-//     // Initialize all the pixels' prev pixels (stored as indices in leftward column-major order)
-//     // for backtracking later
-//     for (int x = cost.width() - 1; x >= 0; x--)
-//     {
-//         for (int y = 0; y < overlap; y++)
-//         {
-//             prev.push_back(-1); // -1 indicates a prev that doesn't exist yet
-//         }
-//     }
-
-//     // As long as there are pixels to visit
-//     while (!toVisit.empty())
-//     {
-//         // visit the last pixel in the toVisit vector
-//         vector<int> curr_pixel = toVisit[toVisit.size() - 1];
-//         int curr_x = curr_pixel[0], curr_y = curr_pixel[1];
-//         //cout << "visiting pixel " << curr_x << "," << curr_y << endl;
-//         int curr_idx = xy_to_i_leftward(curr_x, curr_y, cost.width(), overlap);
-
-//         visited.push_back(curr_pixel);
-//         toVisit.pop_back(); // don't visit it again
-
-//         // FIND THE CURRENT PIXEL'S NEIGHBORS
-//         vector<vector<int>> neighbors;
-
-//         if (curr_x > 0)
-//         {
-//             vector<int> left = {curr_x - 1, curr_y};
-//             neighbors.push_back(left);
-
-//             if (curr_y != 0)
-//             { // if not at top edge
-//                 vector<int> up = {curr_x - 1, curr_y - 1};
-//                 neighbors.push_back(up);
-//             }
-//             if (curr_y != overlap - 1)
-//             { // if not at bottom edge
-//                 vector<int> down = {curr_x - 1, curr_y + 1};
-//                 neighbors.push_back(down);
-//             }
-//         }
-
-//         // LOOP THROUGH THE NEIGHBORS
-//         for (auto i = 0; i < neighbors.size(); i++)
-//         {
-//             int nb_x = neighbors[i][0], nb_y = neighbors[i][1];
-//             //cout << "   a neighbor is " << nb_x << "," << nb_y << endl;
-
-//             // COMPUTE CUMULATIVE COST TO GET TO NEIGHBOR
-//             float cumulative_cost = error(nb_x, nb_y) + cost(curr_x, curr_y);
-
-//             // IF THE COMPUTED CUMULATIVE COST IS LESS THAN THE EXISITNG CUMULATIVE COST, UPDATE IT
-//             if (cumulative_cost < cost(nb_x, nb_y))
-//             {
-//                 cost(nb_x, nb_y) = cumulative_cost;
-//                 //cout << "updated cum_cost for " << nb_x << "," << nb_y << " to be " << cumulative_cost << endl;
-
-//                 // ALSO UPDATE THIS NEIGHBOR'S PREV PIXEL TO BE THE CURRENT PIXEL TO TRACE BACK
-//                 int nb_idx = xy_to_i_leftward(nb_x, nb_y, cost.width(), overlap);
-//                 prev[nb_idx] = curr_idx;
-//             }
-
-//             // Only add this neighbor to toVisit if it's not already visited
-//             if (find(visited.begin(), visited.end(), neighbors[i]) == visited.end())
-//             {
-//                 toVisit.push_back({nb_x, nb_y});
-//             }
-//         }
-//     }
-//     //(cost/25.0).write(DATA_DIR "/output/cost.png");
-
-// BACKTRACKING
-// First find the ending pixel (in left-most column) with lowest cumulative cost
-
-//     int min_idx = 0;
-//     int last_pixel;
-//     for (int y = 0; y < overlap; y++)
-//     {
-//         if (cost(0, y) < cost(0, min_idx))
-//         {
-//             min_idx = y;
-//         }
-//     }
-
-//     last_pixel = xy_to_i_leftward(0, min_idx, cost.width(), overlap);
-//     //cout << last_pixel << endl;
-
-//     // Now trace back through prev to build the minimum-cost path
-//     vector<int> best_path;
-//     best_path.push_back(last_pixel);
-
-//     int prev_pixel = prev[last_pixel];
-//     while (prev_pixel != -1)
-//     {
-//         best_path.push_back(prev_pixel);
-//         prev_pixel = prev[prev_pixel];
-//     }
-//     //reverse(best_path.begin(), best_path.end());
-
-//     // Populate binary mask
-//     for (int x = cost.width(); x >= 0; x--)
-//     {
-//         vector<int> path_pixel = i_to_xy_leftward(best_path[x], cost.width(), overlap);
-//         int path_pixel_y = path_pixel[1];
-//         for (int y = 0; y < path_pixel_y; y++)
-//         {
-//             binary_mask(x, y) = 0; // set pixels above the path to 0
-//         }
-//     }
-// }
-
-// // if patch borders other patches to the left, search for lowest-cost VERTICAL PATH
-// if (edge_case == 2 || edge_case == 3)
-// {
-//     //initialize initial pixels' (bottom left row) costs to be the corresponding error in error image
-//     for (int x = 0; x < overlap; x++)
-//     {
-//         cost(x, cost.height() - 1) = error(x, error.height() - 1);
-//     }
-
-//     vector<vector<int>> visited; // visited pixels
-//     deque<vector<int>> toVisit;  // next neighbors to visit
-//     vector<int> prev;            // for each pixel, its most updated previous pixel in best path
-//                                  // (for backtracking), STORED AS INDICES, NOT COORDINATES
-
-//     // Mark the first bottom row of pixels as pixels to visit
-//     for (int x = 0; x < overlap; x++)
-//     {
-//         toVisit.push_back({x, cost.height() - 1});
-//     }
-
-//     // Initialize all the pixels' prev pixels (stored as indices in upward row-major order)
-//     // for backtracking later
-//     for (int y = cost.height() - 1; y >= 0; y--)
-//     {
-//         for (int x = 0; x < overlap; x++)
-//         {
-//             prev.push_back(-1); // -1 indicates a prev that doesn't exist yet
-//         }
-//     }
-
-//     while (!toVisit.empty())
-//     {
-//         // visit the first pixel in the toVisit vector
-//         vector<int> curr_pixel = toVisit[toVisit.size() - 1];
-//         int curr_x = curr_pixel[0], curr_y = curr_pixel[1];
-//         //if (curr_y == 1) exit(0);
-//         //cout << "visiting pixel " << curr_x << "," << curr_y << endl;
-//         int curr_idx = xy_to_i_upward(curr_x, curr_y, overlap, cost.height());
-
-//         visited.push_back(curr_pixel);
-//         toVisit.pop_back();
-
-//         // FIND THE CURRENT PIXEL'S NEIGHBORS
-//         vector<vector<int>> neighbors;
-
-//         if (curr_y > 0)
-//         {
-//             vector<int> top = {curr_x, curr_y - 1};
-//             neighbors.push_back(top);
-
-//             if (curr_x != 0)
-//             { // if not at left edge
-//                 vector<int> left = {curr_x - 1, curr_y - 1};
-//                 neighbors.push_back(left);
-//             }
-//             if (curr_x != overlap - 1)
-//             { // if not at right edge
-//                 vector<int> right = {curr_x + 1, curr_y - 1};
-//                 neighbors.push_back(right);
-//             }
-//         }
-
-//         // LOOP THROUGH THE NEIGHBORS
-//         for (auto i = 0; i < neighbors.size(); i++)
-//         {
-//             int nb_x = neighbors[i][0], nb_y = neighbors[i][1];
-//             //cout << "   a neighbor is " << nb_x << "," << nb_y << endl;
-
-//             // COMPUTE CUMULATIVE COST TO GET TO NEIGHBOR
-//             float cumulative_cost = error(nb_x, nb_y) + cost(curr_x, curr_y);
-
-//             // IF THE COMPUTED CUMULATIVE COST IS LESS THAN THE EXISITNG CUMULATIVE COST, UPDATE IT
-//             if (cumulative_cost < cost(nb_x, nb_y))
-//             {
-//                 cost(nb_x, nb_y) = cumulative_cost;
-//                 //cout << "updated cum_cost for " << nb_x << "," << nb_y << " to be " << cumulative_cost << endl;
-
-//                 // ALSO UPDATE THIS NEIGHBOR'S PREV PIXEL TO BE THE CURRENT PIXEL TO TRACE BACK
-//                 int nb_idx = xy_to_i_upward(nb_x, nb_y, overlap, cost.height());
-//                 prev[nb_idx] = curr_idx;
-//             }
-
-//             // Only add this neighbor to toVisit if it's not already visited
-//             if (find(visited.begin(), visited.end(), neighbors[i]) == visited.end())
-//             {
-//                 toVisit.push_back({nb_x, nb_y});
-//             }
-//         }
-//     }
-//     (cost / 25.0).write(DATA_DIR "/output/cost.png");
-//     // for (int y = cost.height()-1; y >= 0; y--) {
-//     //     for (int x = 0; x < overlap; x++) {
-//     //         //cout << "cost(" << x << ", " << y << ") = " << cost(x, y) << endl;
-//     //     }
-//     // }
-
-//     // BACKTRACKING
-//     // First find the ending pixel (in last row) with lowest cumulative cost
-//     int min_idx = 0;
-//     int last_pixel;
-//     for (int x = 0; x < overlap; x++)
-//     {
-//         //cout << cost(x, 0) << endl;
-//         if (cost(x, 0) < cost(min_idx, 0))
-//         {
-//             min_idx = x;
-//         }
-//     }
-//     //cout << min_idx << endl;
-
-//     last_pixel = xy_to_i_upward(min_idx, 0, overlap, cost.height());
-//     cout << last_pixel << endl;
-
-//     // Now trace back through prev to build the minimum-cost path
-//     vector<int> best_path;
-//     best_path.push_back(last_pixel);
-
-//     int prev_pixel = prev[last_pixel];
-//     while (prev_pixel != -1)
-//     {
-//         best_path.push_back(prev_pixel);
-//         prev_pixel = prev[prev_pixel];
-//     }
-//     reverse(best_path.begin(), best_path.end());
-
-//     for (int i = 0; i < best_path.size(); i++)
-//     {
-//         //cout << best_path[i] << endl;
-//     }
-
-//     // Populate binary mask
-//     for (int y = cost.height(); y >= 0; y--)
-//     {
-//         vector<int> path_pixel = i_to_xy_upward(best_path[y], overlap, cost.height());
-//         int path_pixel_x = path_pixel[0];
-//         for (int x = 0; x < path_pixel_x; x++)
-//         {
-//             binary_mask(x, y) = 0; // set pixels to the left of the path to 0
-//         }
-//     }
-// }
-// binary_mask.write(DATA_DIR "/output/mask.png");
-// //cout << edge_case << endl;
-// return binary_mask;
-// }
 
 // DIJKSTRA'S ALG IMPLEMENTATION OF MIN-ERROR BOUNDARY CUT
 // returns binary mask: white pixels indicate pixels in the patch to be kept, black pixels are cut out
 FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
 {
-
+    error.write(DATA_DIR "/output/error.png");
     // binary mask image to be returned at end of algorithm
     FloatImage binary_mask(error.width(), error.height(), error.channels());
     for (int i = 0; i < binary_mask.size(); i++)
@@ -701,20 +412,17 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
 
     // Initialize cost image: will store the cumulative cost to reach each pixel once Dijkstra's algorithm completes
     FloatImage cost(error.width(), error.height(), error.channels());
-    for (int i = 0; i < cost.size(); i++)
-    {
-        cost(i) = INFINITY; // initialize to infinty to set it up for Dikstra's alg
-    }
+
     //(error).write(DATA_DIR "/output/error.png");
 
     // if patch borders other patches above, search for lowest-cost HORIZONTAL path
     if (edge_case == 1)
     {
-        //initialize initial pixels' (top right column) costs to be the corresponding error in error image
-        for (int y = 0; y < overlap; y++)
-        {
-            cost(cost.width() - 1, y) = error(error.width() - 1, y);
-        }
+        // //initialize initial pixels' (top right column) costs to be the corresponding error in error image
+        // for (int y = 0; y < overlap; y++)
+        // {
+        //     cost(cost.width() - 1, y) = error(error.width() - 1, y);
+        // }
         // FIND ALL PATHS WITH DIJKSTRA'S ALG
         vector<int> paths = find_paths(error, cost, cost.width(), overlap, overlap);
 
@@ -741,14 +449,14 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
             best_path.push_back(prev_pixel);
             prev_pixel = paths[prev_pixel];
         }
-        reverse(best_path.begin(), best_path.end());
+        //reverse(best_path.begin(), best_path.end());
 
         // Populate binary mask
         for (int x = cost.width() - 1; x >= 0; x--)
         {
             vector<int> path_pixel = i_to_xy_leftward(best_path[x], cost.width(), overlap);
             int path_pixel_y = path_pixel[1];
-            for (int y = 0; y <= path_pixel_y; y++)
+            for (int y = 0; y < path_pixel_y; y++)
             {
                 binary_mask(x, y) = 0; // set pixels above the path to 0
             }
@@ -758,11 +466,11 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
     // if patch borders other patches the left, search for lowest-cost VERTICAL path
     else if (edge_case == 2)
     {
-        //initialize initial pixels' (bottom left row) costs to be the corresponding error in error image
-        for (int x = 0; x < overlap; x++)
-        {
-            cost(x, cost.height() - 1) = error(x, error.height() - 1);
-        }
+        // //initialize initial pixels' (bottom left row) costs to be the corresponding error in error image
+        // for (int x = 0; x < overlap; x++)
+        // {
+        //     cost(x, cost.height() - 1) = error(x, error.height() - 1);
+        // }
         // FIND ALL PATHS WITH DIJKSTRA'S ALG
         vector<int> paths = find_paths(error, cost, overlap, cost.height(), overlap);
 
@@ -790,14 +498,14 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
             best_path.push_back(prev_pixel);
             prev_pixel = paths[prev_pixel];
         }
-        reverse(best_path.begin(), best_path.end());
+        //reverse(best_path.begin(), best_path.end());
 
         // Populate binary mask
         for (int y = cost.height() - 1; y >= 0; y--)
         {
             vector<int> path_pixel = i_to_xy_upward(best_path[y], overlap, cost.height());
             int path_pixel_x = path_pixel[0];
-            for (int x = 0; x <= path_pixel_x; x++)
+            for (int x = 0; x < path_pixel_x; x++)
             {
                 binary_mask(x, y) = 0; // set pixels to the left of the path to 0
             }
@@ -808,31 +516,33 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         FloatImage cost_ver(cost);
         FloatImage cost_hor(cost);
         //need to join both paths
-        for (int x = 0; x < overlap; x++)
-        {
-            cost_ver(x, cost.height() - 1) = error(x, error.height() - 1);
-        }
-        for (int y = 0; y < overlap; y++)
-        {
-            cost_hor(cost.width() - 1, y) = error(error.width() - 1, y);
-        }
+        // for (int x = 0; x < overlap; x++)
+        // {
+        //     cost_ver(x, cost.height() - 1) = error(x, error.height() - 1);
+        // }
+        // for (int y = 0; y < overlap; y++)
+        // {
+        //     cost_hor(cost.width() - 1, y) = error(error.width() - 1, y);
+        // }
+
+        // find both vertical and horizontal paths
+        vector<int> prev_hor = find_paths(error, cost_hor, cost.width(), overlap, overlap);
+        vector<int> prev_vert = find_paths(error, cost_ver, overlap, cost.height(), overlap);
 
         // VERTICAL BACKTRACKING
         // vertical path will end at y = overlap/2
-        vector<int> prev_hor = find_paths(error, cost_hor, cost_hor.width(), overlap, overlap);
-        vector<int> prev_vert = find_paths(error, cost_ver, overlap, cost_ver.height(), overlap);
 
         int last_pixel_x_vertical = 0;
         int last_pixel_i_vertical;
         for (int x = 0; x < overlap; x++)
         {
-            if (cost_ver(x, overlap / 2) < cost_ver(last_pixel_x_vertical, overlap / 2))
+            if (cost_ver(x, 0) < cost_ver(last_pixel_x_vertical, 0))
             {
                 last_pixel_x_vertical = x;
             }
         }
 
-        last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, overlap / 2, overlap, cost.height());
+        last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, 0, overlap, cost.height());
 
         //HORIZONTAL BACKTRACKING
         //horizontal path will end at x = overlap/2
@@ -840,27 +550,27 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         int last_pixel_i_horizontal;
         for (int y = 0; y < overlap; y++)
         {
-            if (cost_hor(overlap / 2, y) < cost_hor(overlap / 2, last_pixel_y_horizontal))
+            if (cost_hor(0, y) < cost_hor(0, last_pixel_y_horizontal))
             {
                 last_pixel_y_horizontal = y;
             }
         }
 
-        // PICK MINIMUM OF THE TWO LAST PIXELS TO BE THE PIXEL JOINING BOTH PATHS
-        vector<int> joining_pixel;
-        if (cost_ver(last_pixel_x_vertical, overlap / 2) < cost_hor(overlap / 2, last_pixel_y_horizontal))
-        {
-            joining_pixel = {last_pixel_x_vertical, overlap / 2};
-        }
-        else
-        {
-            joining_pixel = {overlap / 2, last_pixel_y_horizontal};
-        }
-        cout << joining_pixel[0] << "," << joining_pixel[1] << endl;
+        // // PICK MINIMUM OF THE TWO LAST PIXELS TO BE THE PIXEL JOINING BOTH PATHS
+        // vector<int> joining_pixel;
+        // if (cost_ver(last_pixel_x_vertical, 0) < cost_hor(0, last_pixel_y_horizontal))
+        // {
+        //     joining_pixel = {last_pixel_x_vertical, 0};
+        // }
+        // else
+        // {
+        //     joining_pixel = {0, last_pixel_y_horizontal};
+        // }
+        // cout << joining_pixel[0] << "," << joining_pixel[1] << endl;
 
         // convert joining pixel's coords using respective indexing schemes
-        last_pixel_i_horizontal = xy_to_i_leftward(joining_pixel[0], joining_pixel[1], cost_hor.width(), overlap);
-        last_pixel_i_vertical = xy_to_i_upward(joining_pixel[0], joining_pixel[1], overlap, cost_ver.height());
+        last_pixel_i_horizontal = xy_to_i_leftward(0, last_pixel_y_horizontal, cost_hor.width(), overlap);
+        last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, 0, overlap, cost_ver.height());
 
         // trace back vertically to build the minimum-cost vertical path
         vector<int> best_path_vertical;
@@ -870,8 +580,14 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         while (prev_pixel_down != -1)
         {
             best_path_vertical.push_back(prev_pixel_down);
+            vector<int> curr_pixel = i_to_xy_upward(prev_pixel_down, overlap, cost.height());
+
             prev_pixel_down = prev_vert[prev_pixel_down];
+            vector<int> prev_pixel = i_to_xy_upward(prev_pixel_down, overlap, cost.height());
+
+           // cout << curr_pixel[0] << "," << curr_pixel[1] << " | " << prev_pixel[0] << "," << prev_pixel[1] << endl;
         }
+
         //reverse(best_path_vertical.begin(), best_path_vertical.end());
         for (int i = 0; i < best_path_vertical.size(); i++)
         {
@@ -881,11 +597,11 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         }
 
         // Populate binary mask vertically
-        for (int y = joining_pixel[1]; y < cost.height(); y++)
+        for (int y = 0; y < best_path_vertical.size(); y++)
         {
             vector<int> path_pixel = i_to_xy_upward(best_path_vertical[y], overlap, cost.height());
             int path_pixel_x = path_pixel[0];
-            for (int x = 0; x <= path_pixel_x; x++)
+            for (int x = 0; x < path_pixel_x; x++)
             {
                 binary_mask(x, y) = 0; // set pixels to the left of the path to 0
             }
@@ -904,23 +620,23 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         //reverse(best_path_horizontal.begin(), best_path_horizontal.end());
 
         // Populate binary mask horizontally
-        for (int x = joining_pixel[0]; x < cost.width(); x++)
+        for (int x = 0; x < best_path_horizontal.size(); x++)
         {
             vector<int> path_pixel = i_to_xy_leftward(best_path_horizontal[x], cost.width(), overlap);
             int path_pixel_y = path_pixel[1];
-            for (int y = 0; y <= path_pixel_y; y++)
+            for (int y = 0; y < path_pixel_y; y++)
             {
                 binary_mask(x, y) = 0; // set pixels above the path to 0
             }
         }
-        binary_mask(joining_pixel[0], joining_pixel[1]) = 0.5;
-        for (int x = 0; x < joining_pixel[0]; x++)
-        {
-            for (int y = 0; y < joining_pixel[1]; y++)
-            {
-                binary_mask(x, y) = 0; // set the top left corner to 0
-            }
-        }
+        // binary_mask(joining_pixel[0], joining_pixel[1]) = 0.5;
+        // for (int x = 0; x < joining_pixel[0]; x++)
+        // {
+        //     for (int y = 0; y < joining_pixel[1]; y++)
+        //     {
+        //         binary_mask(x, y) = 0; // set the top left corner to 0
+        //     }
+        // }
     }
     binary_mask.write(DATA_DIR "/output/mask.png");
     //cout << edge_case << endl;
@@ -931,8 +647,19 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
 // Paths are returned as a vector of integer indices recording each pixel i's previous pixel in the path
 vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int height, int overlap)
 {
-    vector<vector<int>> visited; // visited pixels
-    vector<vector<int>> toVisit; // next neighbors to visit
+    vector<vector<int>> unvisited; // unvisited pixels
+    // mark all pixels as unvisited to begin with
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            unvisited.push_back({x, y});
+        }
+    }
+
+    // initialize all costs to infinty
+    for (int i = 0; i < cost.size(); i++) {
+        cost(i) = INFINITY; 
+    }
+    
     vector<int> prev;            // for each pixel, its most updated previous pixel in best path
                                  // (for backtracking), STORED AS INDICES, NOT COORDINATES
 
@@ -941,14 +668,8 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
         vertical = true; // indicates this is a vertical rectangle
     else if (height == overlap)
         horizontal = true; // indicates this is a horizontal rectangle
-
     if (vertical)
     {
-        // Mark the first bottom row of pixels as initial pixels to visit
-        for (int x = 0; x < width; x++)
-        {
-            toVisit.push_back({x, height - 1});
-        }
         // Initialize all the pixels' prev pixels (stored as indices in upward row-major order)
         // for backtracking later
         for (int y = cost.height() - 1; y >= 0; y--)
@@ -958,14 +679,12 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
                 prev.push_back(-1); // -1 indicates a prev that doesn't exist yet
             }
         }
+        for (int x = 0; x < overlap; x++) {
+            cost(x, cost.height()-1) = error(x, cost.height()-1);
+        }
     }
     else if (horizontal)
     {
-        // Mark the first rightmost column of pixels as initial pixels to visit
-        for (int y = 0; y < overlap; y++)
-        {
-            toVisit.push_back({width - 1, y});
-        }
         // Initialize all the pixels' prev pixels (stored as indices in leftward column-major order)
         // for backtracking later
         for (int x = cost.width() - 1; x >= 0; x--)
@@ -975,68 +694,103 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
                 prev.push_back(-1); // -1 indicates a prev that doesn't exist yet
             }
         }
+        for (int y = 0; y < overlap; y++) {
+            cost(cost.width()-1, y) = error(cost.width()-1, y);
+        }
     }
 
+    // START OF SEARCH
+    bool start = true;
     // As long as there are pixels to visit
-    while (!toVisit.empty())
+    while (!unvisited.empty())
     {
-        // visit the last pixel in the toVisit vector
-        vector<int> curr_pixel = toVisit[toVisit.size() - 1];
-
-        int curr_x = curr_pixel[0], curr_y = curr_pixel[1];
-        int curr_idx; // pixel location in index form
-        if (vertical)
-            curr_idx = xy_to_i_upward(curr_x, curr_y, overlap, cost.height());
-        else if (horizontal)
-            curr_idx = xy_to_i_leftward(curr_x, curr_y, cost.width(), overlap);
-
-        visited.push_back(curr_pixel);
-        toVisit.pop_back(); // don't visit it again
+        // SORT unvisited from biggest to smallest in order to extract the smallest each time
+        for (int i = 0; i < unvisited.size(); i++) {
+            int max_idx = i;
+            int max_x = unvisited[max_idx][0], max_y = unvisited[max_idx][1];
+            float max_cost = cost(max_x, max_y);
+            for (int j = i+1; j < unvisited.size(); j++) {
+                float next_x = unvisited[j][0], next_y = unvisited[j][1];
+                float next_cost = cost(next_x, next_y);
+                if (next_cost > max_cost) {
+                    swap(unvisited[max_idx], unvisited[j]);
+                }
+            }
+        }
 
         // FIND THE CURRENT PIXEL'S NEIGHBORS
         vector<vector<int>> neighbors;
+        int curr_x, curr_y, curr_idx; // keep track of current location
 
-        if (vertical)
-        {
-            if (curr_y > 0)
+        if (start) {
+            if (vertical) {
+                // initial neighbors are the first bottom row of pixels
+                for (int x = 0; x < width; x++) {
+                    neighbors.push_back({x, height - 1});
+                }
+                start = false;
+            }
+            else if (horizontal) {
+                // initial neighbors are the first rightmost column of pixels
+                for (int y = 0; y < overlap; y++) {
+                    neighbors.push_back({width - 1, y});
+                }
+                start = false;
+            }
+        }
+
+        else if (!start) {
+            // visit the pixel with smallest known cumulative cost in the toVisit vector
+            vector<int> curr_pixel = unvisited[unvisited.size() - 1];
+            curr_x = curr_pixel[0], curr_y = curr_pixel[1];
+            if (vertical)
+                curr_idx = xy_to_i_upward(curr_x, curr_y, overlap, cost.height());
+            else if (horizontal)
+                curr_idx = xy_to_i_leftward(curr_x, curr_y, cost.width(), overlap);
+        
+            if (vertical)
             {
-                vector<int> top = {curr_x, curr_y - 1};
-                neighbors.push_back(top);
+                if (curr_y > 0) 
+                { // no neighbors for top row
+                    vector<int> top = {curr_x, curr_y - 1};
+                    neighbors.push_back(top);
 
-                if (curr_x != 0)
-                { // if not at left edge
-                    vector<int> left = {curr_x - 1, curr_y - 1};
+                    if (curr_x != 0)
+                    { // if not at left edge
+                        vector<int> left = {curr_x - 1, curr_y - 1};
+                        neighbors.push_back(left);
+                    }
+                    if (curr_x != overlap - 1)
+                    { // if not at right edge
+                        vector<int> right = {curr_x + 1, curr_y - 1};
+                        neighbors.push_back(right);
+                    }
+                }
+            }
+            else if (horizontal)
+            {
+                if (curr_x > 0) // no neighbors for leftmost row 
+                {
+                    vector<int> left = {curr_x - 1, curr_y};
                     neighbors.push_back(left);
-                }
-                if (curr_x != overlap - 1)
-                { // if not at right edge
-                    vector<int> right = {curr_x + 1, curr_y - 1};
-                    neighbors.push_back(right);
-                }
-            }
-        }
-        else if (horizontal)
-        {
-            if (curr_x > 0)
-            {
-                vector<int> left = {curr_x - 1, curr_y};
-                neighbors.push_back(left);
 
-                if (curr_y != 0)
-                { // if not at top edge
-                    vector<int> up = {curr_x - 1, curr_y - 1};
-                    neighbors.push_back(up);
-                }
-                if (curr_y != overlap - 1)
-                { // if not at bottom edge
-                    vector<int> down = {curr_x - 1, curr_y + 1};
-                    neighbors.push_back(down);
+                    if (curr_y != 0)
+                    { // if not at top edge
+                        vector<int> up = {curr_x - 1, curr_y - 1};
+                        neighbors.push_back(up);
+                    }
+                    if (curr_y != overlap - 1)
+                    { // if not at bottom edge
+                        vector<int> down = {curr_x - 1, curr_y + 1};
+                        neighbors.push_back(down);
+                    }
                 }
             }
         }
 
-        // LOOP THROUGH THE NEIGHBORS
-        for (auto i = 0; i < neighbors.size(); i++)
+
+        // LOOP THROUGH THE NEIGHBORS AND COMPUTE TENTATIVE CUMULATIVE COST
+        for (int i = 0; i < neighbors.size(); i++)
         {
             int nb_x = neighbors[i][0], nb_y = neighbors[i][1];
             int nb_idx;
@@ -1045,23 +799,33 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
             else if (horizontal)
                 nb_idx = xy_to_i_leftward(nb_x, nb_y, cost.width(), overlap);
 
-            // COMPUTE CUMULATIVE COST TO GET TO NEIGHBOR
-            float cumulative_cost = error(nb_x, nb_y) + cost(curr_x, curr_y);
+            // compute tentative cumulative cost to reach neighbor
+            float cumulative_cost;
+
+            if (unvisited.size() == width*height) { // if we're at the starting point
+                cumulative_cost = error(nb_x, nb_y) + 0;
+            }
+            else {
+                cumulative_cost = error(nb_x, nb_y) + cost(curr_x, curr_y);
+            }
 
             // IF THE COMPUTED CUMULATIVE COST IS LESS THAN THE EXISITNG CUMULATIVE COST, UPDATE IT
             if (cumulative_cost < cost(nb_x, nb_y))
             {
                 cost(nb_x, nb_y) = cumulative_cost;
+                (logim(cost)).write(DATA_DIR "/output/cost.png");
+                //__libcpp_thread_sleep_for(std::chrono::nanoseconds(10000000)); // visualize cost computation
 
                 // ALSO UPDATE THIS NEIGHBOR'S PREV PIXEL TO BE THE CURRENT PIXEL TO TRACE BACK
                 prev[nb_idx] = curr_idx;
             }
+        }
+        // current pixel has been visited, never visit again
+        unvisited.pop_back();
 
-            // Only add this neighbor to toVisit if it's not already visited
-            if (find(visited.begin(), visited.end(), neighbors[i]) == visited.end())
-            {
-                toVisit.push_back({nb_x, nb_y});
-            }
+        // if we've just visited a pixel at the end of the path, we're done
+        if ( (vertical && curr_y == 0) || (horizontal && curr_x == 0) ) {
+            return prev;
         }
     }
     return prev;
@@ -1089,4 +853,13 @@ vector<int> i_to_xy_upward(int i, int width, int height)
 vector<int> i_to_xy_leftward(int i, int width, int height)
 {
     return {width - 1 - (i / height), i % height};
+}
+
+FloatImage logim(const FloatImage &im)
+{
+    FloatImage output(im);
+    for (int i = 0; i < im.size(); i++) {
+        output(i) = log10(output(i));
+    }
+    return output;
 }

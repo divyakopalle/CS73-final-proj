@@ -16,3 +16,5 @@ int xy_to_i_upward(int x, int y, int width, int height);
 int xy_to_i_leftward(int x, int y, int width, int height);
 vector<int> i_to_xy_upward(int i, int width, int height);
 vector<int> i_to_xy_leftward(int i, int width, int height);
+
+FloatImage logim(const FloatImage &im);
