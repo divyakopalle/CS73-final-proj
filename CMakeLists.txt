@@ -31,7 +31,7 @@ add_library(common_lib STATIC
 )
 SOURCE_GROUP("src\\ext\\stb" FILES ${ext_stb_srcs})
 
-set(final-proj_srcs src/quilting_main.cpp src/quilting.cpp)                                     # final-proj
+set(final-proj_srcs src/main.cpp src/quilting.cpp src/transfer.cpp src/a2.cpp)                                     # final-proj
 add_executable(final-proj ${final-proj_srcs})                                               # final-proj
 target_link_libraries(final-proj common_lib)                                        # final-proj
 SOURCE_GROUP("src" FILES ${final-proj_srcs})                                        # final-proj
