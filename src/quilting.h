@@ -7,6 +7,7 @@ using namespace std;
 
 // QUILTING METHODS
 FloatImage quilt_random(const FloatImage &sample, int outsize, int patchsize);
+<<<<<<< HEAD
 FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol);
 FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol);
 
@@ -25,3 +26,9 @@ vector<int> i_to_xy_leftward(int i, int width, int height);
 // OTHER UTILITY METHODS
 FloatImage logim(const FloatImage &im);
 void check_args(const FloatImage &sample, int patch_size);
+=======
+FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol = 0.10);
+FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol);
+FloatImage min_boundary(FloatImage error, int overlap, bool left, bool top);
+std::vector<std::vector<int>> find_patches(const FloatImage &sample, int patch_size);
+>>>>>>> 9393bb5c6e4bfa5b9b208cf07da2aaeae0bc1f63

@@ -42,9 +42,9 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
     int first_patch_x = rand() % (sample.width() - patch_size + 1);
     int first_patch_y = rand() % (sample.height() - patch_size + 1);
 
-    for (int x = 0; x < patch_size; x++){
-        for (int y = 0; y < patch_size; y++){
-            for (int c = 0; c < output.channels(); c++){
+    for (int x = 0; x < patch_size; x++) {
+        for (int y = 0; y < patch_size; y++) {
+            for (int c = 0; c < output.channels(); c++) {
                 output(x, y, c) = sample(first_patch_x + x, first_patch_y + y, c);
             }
         }
