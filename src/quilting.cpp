@@ -4,44 +4,40 @@
 #include <assert.h>
 #include <iostream>
 #include <cstdlib>
-#include <queue>
 #include <chrono>
 #include <thread>
 
 using namespace std;
 
-// Image quilting via random placement of blocks
+////////////////////////////////////////////////////
+/* IMAGE QUILTING VIA RANDOM PLACEMENT OF BLOCKS */
+///////////////////////////////////////////////////
 FloatImage quilt_random(const FloatImage &sample, int outsize, int patch_size)
 {
-
-    // Make sure patch_size is smaller than sample dimensions
-    if (patch_size > sample.width() || patch_size > sample.height())
-    {
-        cout << "Error: Patch size must be smaller the sample image dimensions." << endl;
-        exit(1);
-    }
+    check_args(sample, patch_size);
 
     FloatImage output(outsize, outsize, sample.channels()); // initialize output image
     srand(time(NULL));                                      // seed the random number generator
 
     // loop over output image by intervals of the patch size
-    for (int x = 0; x <= output.width() - patch_size; x += patch_size)
+    for (int x = 0; x <= output.width(); x += patch_size)
     {
-        for (int y = 0; y <= output.height() - patch_size; y += patch_size)
+        for (int y = 0; y <= output.height(); y += patch_size)
         {
-
             // randomly pick a patch from sample image by defining its origin (top-left) pixel (making sure the patch won't go out of bands)
-            int patch_x0 = rand() % (sample.width() - patch_size + 1);
-            int patch_y0 = rand() % (sample.height() - patch_size + 1);
+            int patch_x = rand() % (sample.width() - patch_size + 1);
+            int patch_y = rand() % (sample.height() - patch_size + 1);
 
             // loop over the patch area in the output image and populate it with the corresponding pixels of the randomly sampled patch
-            for (int x1 = x; x1 < x + patch_size; x1++)
+            for (int x1 = 0; x1 < patch_size; x1++)
             {
-                for (int y1 = y; y1 < y + patch_size; y1++)
+                if (x + x1 == output.width()) break;
+                for (int y1 = 0; y1 < patch_size; y1++)
                 {
+                    if (y + y1 == output.height()) break;
                     for (int c = 0; c < output.channels(); c++)
                     {
-                        output(x1, y1, c) = sample(patch_x0 + x1 - x, patch_y0 + y1 - y, c);
+                        output(x + x1, y + y1, c) = sample(patch_x + x1, patch_y + y1, c);
                     }
                 }
             }
@@ -50,9 +46,8 @@ FloatImage quilt_random(const FloatImage &sample, int outsize, int patch_size)
     return output;
 }
 
-// simple quilting- overlapping method
-
-// helper function to get a random sample of 10% of all possible patches, stored as x,y coordinates of the patch's origin
+/* Helper function: get a random sample of 10% of all possible patches, 
+   stored as x,y coordinates of the patch's origin */
 vector<vector<int>> find_patches(const FloatImage &sample, int patch_size)
 {
 
@@ -71,34 +66,26 @@ vector<vector<int>> find_patches(const FloatImage &sample, int patch_size)
             all_coords.push_back(v);
         }
     }
-
-    // randomly shuffle the order of all possible pairs of x,y coordinates
-    // not sure if this is the appropriate command, we may need to write a helper function for random shuffling instead
+    // shuffle the coordinates
     random_shuffle(all_coords.begin(), all_coords.end());
 
-    // select the first "num_patches number" of x,y pairs to be saved to out_pairs
+    // select the first "num_patches" number of x,y pairs to be saved to out_pairs
     for (int i = 0; i < num_patches; i++)
     {
         out_coords.push_back(all_coords[i]);
     }
-
     return out_coords;
 }
 
-// Perform simple quilting by overlapping patches to minimize SSD in the overlapping regions
+/////////////////////////////////////////////////////////////
+/* IMAGE QUILTING VIA SIMPLE OVERLAPPING TO MINIMIZE ERROR */
+/////////////////////////////////////////////////////////////
 FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol)
 {
-
+    check_args(sample, patch_size);
     FloatImage output(out_size, out_size, sample.channels()); // initialize output image
-
-    // Make sure patch_size is smaller than sample dimensions
-    if (patch_size > sample.width() || patch_size > sample.height())
-    {
-        cout << "Error: Patch size must be smaller the sample image dimensions." << endl;
-        exit(1);
-    }
-
     srand(time(NULL));
+
     // Randomly pick an initial patch from sample image and place it in top-left corner of output image
     int first_patch_x = rand() % (sample.width() - patch_size + 1);
     int first_patch_y = rand() % (sample.height() - patch_size + 1);
@@ -117,30 +104,28 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
     // use find_patches helper function to get a randomized list (x,y) patch coordinates
     vector<vector<int>> patches = find_patches(sample, patch_size);
 
-    bool debug = true;
     // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
-    for (int out_x = 0; out_x < output.width() - patch_size; out_x += patch_size - overlap)
+    for (int out_x = 0; out_x < output.width(); out_x += patch_size - overlap)
     {
-        for (int out_y = 0; out_y < output.height() - patch_size; out_y += patch_size - overlap)
+        for (int out_y = 0; out_y < output.height(); out_y += patch_size - overlap)
         {
             cout << "Quilt simple at (" << out_x << ", " << out_y << ")" << endl;
 
-            vector<int> best_patch1 = best_patch(sample, output, out_size, patch_size, overlap, tol, out_x, out_y, patches);
+            // Calculate the best choice of patch to place here
+            vector<int> patch = best_patch(sample, output, out_size, patch_size, overlap, tol, out_x, out_y, patches);
 
             // Write this patch to the output image
+            if (out_x > 0 || out_y > 0)
             {
-                if (out_x > 0 || out_y > 0)
+                for (int x = 0; x < patch_size; x++)
                 {
-                    for (int x = 0; x < patch_size; x++)
+                    if ( (out_x) + x == output.width()) break;
+                    for (int y = 0; y < patch_size; y++)
                     {
-                        if ( (out_x) + x == output.width()) break;
-                        for (int y = 0; y < patch_size; y++)
+                        if ( (out_y) + y == output.height()) break;
+                        for (int c = 0; c < output.channels(); c++)
                         {
-                            if ( (out_y) + y == output.height()) break;
-                            for (int c = 0; c < output.channels(); c++)
-                            {
-                                output(out_x + x, out_y + y, c) = sample(best_patch1[0] + x, best_patch1[1] + y, c);
-                            }
+                            output(out_x + x, out_y + y, c) = sample(patch[0] + x, patch[1] + y, c);
                         }
                     }
                 }
@@ -150,11 +135,11 @@ FloatImage quilt_simple(const FloatImage &sample, int out_size, int patch_size, 
     return output;
 }
 
+/* Helper function: given a set of patches, calculate the best one to be placed 
+   at each location in the output image, by minimizng sum of squared differences (SSD) */
 vector<int> best_patch(const FloatImage &sample, FloatImage &output, int out_size, int patch_size, int overlap, float tol, int out_x, int out_y, vector<vector<int>> patches)
 {
-    srand(time(NULL));
-    // Vector that holds SSD values of all selected patches
-    vector<float> SSD_values;
+    vector<float> SSD_values;    // Vector that holds SSD values of all selected patches
 
     // Loop over all selected patches
     for (int i = 0; i < patches.size(); i++)
@@ -162,19 +147,19 @@ vector<int> best_patch(const FloatImage &sample, FloatImage &output, int out_siz
         int patch_x = patches[i][0];
         int patch_y = patches[i][1];
 
-        // initialize SSD of the current patch to store running sum of its SSD
+        // initialize running sum of SSD for current patch
         float patch_SSD = 0.f;
 
-        // If we're not bordering the image's left-edge then loop over the overlap of patch-left with output-right
+        /* If we're not bordering the image's left-edge,
+           compare SSDs of overlap between patch-left with output-right */
         if (out_x > 0)
         {
-            // for x1 from 0 to overlap
             for (int x1 = 0; x1 < overlap; x1++)
             {
-                // for y1 from 0 to patchsize
+                if ( (out_x + x1) == output.width()) break;
                 for (int y1 = 0; y1 < patch_size; y1++)
                 {
-                    // for each channel
+                    if ( (out_y + y1) == output.height()) break;
                     for (int c = 0; c < sample.channels(); c++)
                     {
                         patch_SSD += pow(sample(patch_x + x1, patch_y + y1, c) - output(out_x  + x1, out_y + y1, c), 2);
@@ -183,16 +168,16 @@ vector<int> best_patch(const FloatImage &sample, FloatImage &output, int out_siz
             }
         }
 
-        // If we're not bordering the image's top-edge, then loop over the overlap of patch-top with out-bottom
+        /* If we're not bordering the image's top-edge,
+           compare SSDs of overlap between patch-top with output-bottom */
         if (out_y > 0)
         {
-            // for x1 from 0 to patchsize
             for (int x1 = 0; x1 < patch_size; x1++)
             {
-                // for y1 from 0 to overlap
+                if ( (out_x + x1) == output.width()) break;
                 for (int y1 = 0; y1 < overlap; y1++)
                 {
-                    // for each channel
+                    if ( (out_y + y1) == output.height()) break;
                     for (int c = 0; c < sample.channels(); c++)
                     {
                         patch_SSD += pow(sample(patch_x + x1, patch_y + y1, c) - output(out_x + x1, out_y + y1, c), 2);
@@ -200,17 +185,12 @@ vector<int> best_patch(const FloatImage &sample, FloatImage &output, int out_siz
                 }
             }
         }
-
-        // Record SSD for this patch
-        SSD_values.push_back(patch_SSD);
+        SSD_values.push_back(patch_SSD);  // Record SSD for this patch
     }
 
-    // find the lowest values in SSD_values given by tol (tolerance)
-    // randomly select one of those values, store the corresponding (x, y) in variables best_pat_x, best_pat_y
-
-    // repeatedly take the next smallest SSD and put the corresponding patch into a new vector (best patches)
+    /* Find the lowest values in SSD_values given by tol (tolerance) by repeatedly 
+       taking the next smallest SSD and putting the corresponding patch into vector of best patches */
     vector<vector<int>> best_patches;
-
     for (int i = 0; i < SSD_values.size() * tol; i++)
     {
         int min_idx = 0;
@@ -225,27 +205,20 @@ vector<int> best_patch(const FloatImage &sample, FloatImage &output, int out_siz
         SSD_values[min_idx] = 1e7; // remove it from consideration
     }
 
-    // randomly pick the index of ONE of the best patches
+    // randomly pick ONE of the best patches to return
     int rand_idx = rand() % (int)(best_patches.size());
-
-    // vector<int> best_patch = best_patches[rand_idx];
     return best_patches[rand_idx];
 }
 
 
-// Perform image quilting using a minimum-error boundary cut
+///////////////////////////////////////////////////
+/* IMAGE QUILTING VIA MINIMUM-ERROR BOUNDARY CUT */
+///////////////////////////////////////////////////
 FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int overlap, float tol)
 {
     FloatImage output(out_size, out_size, sample.channels()); // initialize output image
-
     srand(time(NULL));
-
-    // Make sure patch_size is smaller than sample dimensions
-    if (patch_size > sample.width() || patch_size > sample.height())
-    {
-        cout << "Error: Patch size must be smaller the sample image dimensions." << endl;
-        exit(1);
-    }
+    check_args(sample, patch_size);
 
     // Randomly pick an initial patch from sample image and place it in top-left corner of output image
     int first_patch_x = rand() % (sample.width() - patch_size + 1);
@@ -283,7 +256,9 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
             // Compute SSD at each pixel in overlap region
             if (out_x > 0) {
                 for (int x1 = 0; x1 < overlap; x1++) {
+                    if ( (out_x + x1) == output.width()) break;
                     for (int y1 = 0; y1 < patch_size; y1++) {
+                        if ( (out_y + y1) == output.height()) break;
                         for (int c = 0; c < sample.channels(); c++) {
                             error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
                                              - output(out_x + x1, out_y + y1, c), 2);
@@ -293,7 +268,9 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
             }
             if (out_y > 0) {
                 for (int x1 = 0; x1 < patch_size; x1++) {
+                    if ( (out_x + x1) == output.width()) break;
                     for (int y1 = 0; y1 < overlap; y1++) {
+                        if ( (out_y + y1) == output.height()) break;
                         for (int c = 0; c < sample.channels(); c++) {
                             error(x1, y1) += pow(sample(chosen_patch_x + x1, chosen_patch_y + y1, c) 
                                              - output(out_x + x1, out_y + y1, c), 2);
@@ -333,32 +310,25 @@ FloatImage quilt_cut(const FloatImage &sample, int out_size, int patch_size, int
 }
 
 
-// DIJKSTRA'S ALG IMPLEMENTATION OF MIN-ERROR BOUNDARY CUT
+// Helper method to find the minimum boundary cut for a given error patch
 // returns binary mask: white pixels indicate pixels in the patch to be kept, black pixels are cut out
 FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
 {
-    error.write(DATA_DIR "/output/error.png");
-    // binary mask image to be returned at end of algorithm
+    error.write(DATA_DIR "/output/error.png"); // visualization
+
+    // binary mask image to be returned at end of algorithm, initialized as all 1s
     FloatImage binary_mask(error.width(), error.height(), error.channels());
-    for (int i = 0; i < binary_mask.size(); i++)
-    { //initalize all pixels in mask to 1
+    for (int i = 0; i < binary_mask.size(); i++) {
         binary_mask(i) = 1;
     }
 
     // Initialize cost image: will store the cumulative cost to reach each pixel once Dijkstra's algorithm completes
     FloatImage cost(error.width(), error.height(), error.channels());
 
-    //(error).write(DATA_DIR "/output/error.png");
-
     // if patch borders other patches above, search for lowest-cost HORIZONTAL path
     if (edge_case == 1)
     {
-        // //initialize initial pixels' (top right column) costs to be the corresponding error in error image
-        // for (int y = 0; y < overlap; y++)
-        // {
-        //     cost(cost.width() - 1, y) = error(error.width() - 1, y);
-        // }
-        // FIND ALL PATHS WITH DIJKSTRA'S ALG
+        // Find all paths using a Dijkstra's algorithm implementation (see find_paths)
         vector<int> paths = find_paths(error, cost, cost.width(), overlap, overlap);
 
         // TRACE BACK FROM LOWEST ENDING COST TO GET BEST PATH
@@ -384,7 +354,6 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
             best_path.push_back(prev_pixel);
             prev_pixel = paths[prev_pixel];
         }
-        //reverse(best_path.begin(), best_path.end());
 
         // Populate binary mask
         for (int x = cost.width() - 1; x >= 0; x--)
@@ -405,7 +374,7 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         vector<int> paths = find_paths(error, cost, overlap, cost.height(), overlap);
 
         // TRACE BACK FROM LOWEST ENDING COST TO GET BEST PATH
-        //First find the ending pixel (in last row) with lowest cumulative cost
+        // First find the ending pixel (in last row) with lowest cumulative cost
         int min_idx = 0;
         int last_pixel;
         for (int x = 0; x < overlap; x++) {
@@ -439,23 +408,12 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
     {
         FloatImage cost_ver(cost);
         FloatImage cost_hor(cost);
-        //need to join both paths
-        // for (int x = 0; x < overlap; x++)
-        // {
-        //     cost_ver(x, cost.height() - 1) = error(x, error.height() - 1);
-        // }
-        // for (int y = 0; y < overlap; y++)
-        // {
-        //     cost_hor(cost.width() - 1, y) = error(error.width() - 1, y);
-        // }
 
         // find both vertical and horizontal paths
         vector<int> prev_hor = find_paths(error, cost_hor, cost.width(), overlap, overlap);
         vector<int> prev_vert = find_paths(error, cost_ver, overlap, cost.height(), overlap);
 
         // VERTICAL BACKTRACKING
-        // vertical path will end at y = overlap/2
-
         int last_pixel_x_vertical = 0;
         int last_pixel_i_vertical;
         for (int x = 0; x < overlap; x++)
@@ -465,23 +423,7 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
                 last_pixel_x_vertical = x;
             }
         }
-
         last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, 0, overlap, cost.height());
-
-        //HORIZONTAL BACKTRACKING
-        //horizontal path will end at x = overlap/2
-        int last_pixel_y_horizontal = 0;
-        int last_pixel_i_horizontal;
-        for (int y = 0; y < overlap; y++)
-        {
-            if (cost_hor(0, y) < cost_hor(0, last_pixel_y_horizontal))
-            {
-                last_pixel_y_horizontal = y;
-            }
-        }
-
-        last_pixel_i_horizontal = xy_to_i_leftward(0, last_pixel_y_horizontal, cost_hor.width(), overlap);
-        last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, 0, overlap, cost_ver.height());
 
         // trace back vertically to build the minimum-cost vertical path
         vector<int> best_path_vertical;
@@ -495,13 +437,30 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
 
             prev_pixel_down = prev_vert[prev_pixel_down];
             vector<int> prev_pixel = i_to_xy_upward(prev_pixel_down, overlap, cost.height());
-
         }
-        for (int i = 0; i < best_path_vertical.size(); i++)
+        
+        //HORIZONTAL BACKTRACKING
+        int last_pixel_y_horizontal = 0;
+        int last_pixel_i_horizontal;
+        for (int y = 0; y < overlap; y++)
         {
-            vector<int> coords = i_to_xy_upward(best_path_vertical[i], overlap, cost.height());
-            int x = coords[0], y = coords[1];
-            // cout << x << "," << y << endl;
+            if (cost_hor(0, y) < cost_hor(0, last_pixel_y_horizontal))
+            {
+                last_pixel_y_horizontal = y;
+            }
+        }
+        last_pixel_i_horizontal = xy_to_i_leftward(0, last_pixel_y_horizontal, cost_hor.width(), overlap);
+        last_pixel_i_vertical = xy_to_i_upward(last_pixel_x_vertical, 0, overlap, cost_ver.height());
+
+        // trace back horizontally to build the minimum-cost horizontal path
+        vector<int> best_path_horizontal;
+        best_path_horizontal.push_back(last_pixel_i_horizontal);
+
+        int prev_pixel_right = prev_hor[last_pixel_i_horizontal];
+        while (prev_pixel_right != -1)
+        {
+            best_path_horizontal.push_back(prev_pixel_right);
+            prev_pixel_right = prev_hor[prev_pixel_right];
         }
 
         // Populate binary mask vertically
@@ -513,17 +472,6 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
             {
                 binary_mask(x, y) = 0; // set pixels to the left of the path to 0
             }
-        }
-
-        // trace back horizontally to build the minimum-cost horizontal path
-        vector<int> best_path_horizontal;
-        best_path_horizontal.push_back(last_pixel_i_horizontal);
-
-        int prev_pixel_right = prev_hor[last_pixel_i_horizontal];
-        while (prev_pixel_right != -1)
-        {
-            best_path_horizontal.push_back(prev_pixel_right);
-            prev_pixel_right = prev_hor[prev_pixel_right];
         }
 
         // Populate binary mask horizontally
@@ -538,12 +486,11 @@ FloatImage min_boundary(const FloatImage &error, int overlap, int edge_case)
         }
     }
     binary_mask.write(DATA_DIR "/output/mask.png");
-    //cout << edge_case << endl;
     return binary_mask;
 }
 
-// Uses Dijkstra's Algorithm to find the lowest cost path through a given rectangle (horiz or vert) in the overlap region of the patch
-// Uses error image to iteratively populate the cost image to store lowest cumulative cost to reach each pixel
+// Implementation of Dijkstra's algorithm to find the lowest cost path through a given rectangle (horiz or vert) in the overlap region of the patch
+// Uses error patch to iteratively populate the cost image to store lowest cumulative cost to reach each pixel
 // Paths are returned as a vector of integer indices recording each pixel i's previous pixel in the path
 vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int height, int overlap)
 {
@@ -688,7 +635,6 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
             }
         }
 
-
         // LOOP THROUGH THE NEIGHBORS AND COMPUTE TENTATIVE CUMULATIVE COST
         for (int i = 0; i < neighbors.size(); i++)
         {
@@ -733,28 +679,21 @@ vector<int> find_paths(const FloatImage &error, FloatImage &cost, int width, int
 
 // Converts xy-coordinates to an upward row-major indexing scheme for given grid dimensions
 int xy_to_i_upward(int x, int y, int width, int height)
-{
-    return (height - 1 - y) * (width) + x;
-}
+{return (height - 1 - y) * (width) + x;}
 
 // Converts xy-coordinates to an leftward column-major indexing scheme for given grid dimensions
 int xy_to_i_leftward(int x, int y, int width, int height)
-{
-    return (width - 1 - x) * (height) + y;
-}
+{return (width - 1 - x) * (height) + y;}
 
 // Converts index i to xy-coordinates for upward row-major scheme
 vector<int> i_to_xy_upward(int i, int width, int height)
-{
-    return {i % width, height - 1 - (i / width)};
-}
+{return {i % width, height - 1 - (i / width)};}
 
 // Converts index i to xy-coordinates for leftward row-major scheme
 vector<int> i_to_xy_leftward(int i, int width, int height)
-{
-    return {width - 1 - (i / height), i % height};
-}
+{return {width - 1 - (i / height), i % height};}
 
+// Convert image to log domain for better visualization of cost computation
 FloatImage logim(const FloatImage &im)
 {
     FloatImage output(im);
@@ -762,4 +701,15 @@ FloatImage logim(const FloatImage &im)
         output(i) = log10(output(i));
     }
     return output;
+}
+
+// Check quilting arguments for validity
+void check_args(const FloatImage &sample, int patch_size)
+{
+    // Make sure patch_size is smaller than sample dimensions
+    if (patch_size > sample.width() || patch_size > sample.height())
+    {
+        cout << "Error: Patch size must be smaller the sample image dimensions." << endl;
+        exit(1);
+    }
 }
