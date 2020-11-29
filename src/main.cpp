@@ -16,6 +16,8 @@ FloatImage weave_sample(DATA_DIR "/input/weave.png");
 FloatImage stones_sample(DATA_DIR "/input/stones.png");
 
 FloatImage face_sample(DATA_DIR "/input/face.png");
+FloatImage face_small(DATA_DIR "/input/face_small.png");
+FloatImage rice_small(DATA_DIR "/input/rice_small.png");
 
 void testRandomQuilting()
 {
@@ -82,11 +84,13 @@ void testQuiltCut()
 void testTransfer()
 {
     // FloatImage apples_cut = quilt_cut(apples_sample, 500, 75, 5, .001);
-    //FloatImage rice_transfer = transfer(rice_sample, face_sample, 500, 40, 6, .001, .2f);
+    FloatImage rice_transfer = transfer(rice_sample, face_sample, 60, 10, .001, .2f, 3);
+    //FloatImage rice_transfer_test = transfer(rice_small, face_small, 10, 2, .001, .3f, 3);
 
     // green_cut.write(DATA_DIR "/output/green_cut.png");
     // apples_cut.write(DATA_DIR "/output/apples_cut.png");
-    //rice_transfer.write(DATA_DIR "/output/rice_transfer.png");
+    rice_transfer.write(DATA_DIR "/output/rice_transfer.png");
+    //rice_transfer_test.write(DATA_DIR "/output/rice_transfer_test.png");
 }
 
 int main()
@@ -94,6 +98,6 @@ int main()
     cout << "compiled" << endl;
     // testRandomQuilting();
     // testSimpleQuilting();
-    testQuiltCut();
-    //testTransfer();
+    //testQuiltCut();
+    testTransfer();
 }

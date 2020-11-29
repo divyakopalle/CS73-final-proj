@@ -6,7 +6,6 @@
 #include <assert.h>
 #include <iostream>
 #include <cstdlib>
-#include <deque>
 
 using namespace std;
 
@@ -21,13 +20,17 @@ FloatImage corr_map(const FloatImage &source){
 }
     
 
-//texutre transfer
+/* TEXTURE TRANSFER */
+//////////////////////
 FloatImage transfer(const FloatImage &sample, const FloatImage &target, 
-int out_size, int patch_size, int overlap, float tol, float alpha)
+int patch_size, int overlap, float tol, float alpha, int iters, int i)
 {
+    // base case
+    if (i > iters) return sample;
+
     FloatImage target_corr= corr_map(target);
     FloatImage sample_corr= corr_map(sample);
-    FloatImage output(out_size, out_size, sample.channels()); // initialize output image
+    FloatImage output(target.width(), target.height(), sample.channels()); // initialize output image
 
     srand(time(NULL));
 
@@ -55,8 +58,8 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
 
     bool debug = true;
     // Loop over output image in increments of (patch size - overlap) (making sure patches don't go out of bounds)
-    for (int out_x = 0; out_x < output.width() - patch_size; out_x += patch_size - overlap){
-        for (int out_y = 0; out_y < output.height() - patch_size; out_y += patch_size - overlap){
+    for (int out_x = 0; out_x < output.width(); out_x += patch_size - overlap){
+        for (int out_y = 0; out_y < output.height(); out_y += patch_size - overlap){
             cout << "Current position in output image is "
                  << "(" << out_x << ", " << out_y << ")" << endl;
 
@@ -75,14 +78,13 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
                 // If we're not bordering the image's left-edge then loop over the overlap of patch-left with output-right
                 if (out_x > 0)
                 {
-                    // for x1 from 0 to overlap
                     for (int x1 = 0; x1 < overlap; x1++)
                     {
-                        // for y1 from 0 to patchsize
+                        if ( (out_x + x1) == output.width()) break;
                         for (int y1 = 0; y1 < patch_size; y1++)
                         {
-                            // for each channel
-                            // CORRESPONDANCE ERROR //
+                            if ( (out_y + y1) == output.height()) break;
+                            // CORRESPONDENCE ERROR //
                             patch_SSD += (1-alpha)* pow(sample_corr(patch_x + x1, patch_y + y1) - target_corr(out_x - overlap + x1, out_y + y1), 2);
                             for (int c = 0; c < sample.channels(); c++)
                             {
@@ -93,10 +95,13 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
                     }
                 }
 
-                // If we're not bordering the image's top-edge, then loop over the overlap of patch-top with out-bottom
+                /* If we're not bordering the image's left-edge,
+                    compare SSDs of overlap between patch-left with output-right */
                 if (out_y > 0){
                     for (int x1 = 0; x1 < patch_size; x1++){
+                        if ( (out_x + x1) == output.width()) break;
                         for (int y1 = 0; y1 < overlap; y1++){
+                            if ( (out_y + y1) == output.height()) break;
                             // CORRESPONDANCE ERROR //
                             patch_SSD += (1-alpha)* pow(sample_corr(patch_x + x1, patch_y + y1) - target_corr(out_x - overlap + x1, out_y + y1), 2);                           // for each channel
                             for (int c = 0; c < sample.channels(); c++){
@@ -105,10 +110,8 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
                         }
                     }
                 }
-
                 // Record SSD for this patch
                 SSD_values.push_back(patch_SSD);
-                //cout << "SSD value for patch " << i << " is " << patch_SSD << endl;
             }
 
             // find the lowest values in SSD_values given by tol (tolerance)
@@ -119,24 +122,18 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
 
             for (int i = 0; i < SSD_values.size() * tol; i++){
                 int min_idx = 0;
-                //cout << "START" << endl;
                 for (int j = 0; j < SSD_values.size(); j++){
                     if (SSD_values[j] < SSD_values[min_idx]){
                         min_idx = j;
-                        //cout << "updated global min=" << SSD_values[min_idx] << endl;
                     }
                 }
                 best_patches.push_back(patches[min_idx]);
-                //cout << "Considering patch with SSD " << SSD_values[min_idx] << endl;
                 SSD_values[min_idx] = 1e7; // remove it from consideration
             }
-
-            // cout << "line 371" << endl;
             // randomly pick the index of ONE of the best patches
             int rand_idx = rand() % (int)(best_patches.size());
             int chosen_patch_x = best_patches[rand_idx][0];
             int chosen_patch_y = best_patches[rand_idx][1];
-
 
 
              // START OF MINIMUM-ERROR BOUNDARY CUT//
@@ -153,7 +150,9 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
             // Compute SSD at each pixel in overlap region
             if (out_x > 0) {
                 for (int x1=0; x1<overlap; x1++){
+                    if ( (out_x + x1) == output.width()) break;
                     for (int y1=0; y1<patch_size; y1++){
+                        if ( (out_y + y1) == output.height()) break;
                         // CORRESPONDANCE ERROR //
                         error(x1,y1) += (1-alpha)* pow(sample_corr(chosen_patch_x + x1, chosen_patch_y + y1) - target_corr(out_x - overlap + x1, out_y + y1), 2);
                         for (int c=0; c<sample.channels(); c++){
@@ -164,7 +163,9 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
             } 
             if (out_y > 0){        
                 for (int x1=0; x1<patch_size; x1++){
+                    if ( (out_x + x1) == output.width()) break;
                     for (int y1=0; y1<overlap; y1++){
+                        if ( (out_y + y1) == output.height()) break;
                         // CORRESPONDANCE ERROR //
                         error(x1,y1) += (1-alpha)* pow(sample_corr(chosen_patch_x + x1, chosen_patch_y + y1) - target_corr(out_x - overlap + x1, out_y + y1), 2);
                         for (int c=0; c<sample.channels(); c++){ 
@@ -184,25 +185,29 @@ int out_size, int patch_size, int overlap, float tol, float alpha)
             cut_mask = min_boundary(error, overlap, edge_case);
 
             // Write this patch to the output image
-            if (debug) {
             if (out_x > 0 || out_y > 0) {
-            //if (out_x > 0)
                 for (int x = 0; x < patch_size; x++){
+                    if ( (out_x + x) == output.width()) break;
                     for (int y = 0; y < patch_size; y++){
+                        if ( (out_y + y) == output.height()) break;
                         for (int c = 0; c < output.channels(); c++) {
                             if(cut_mask(x,y,0)==1){
                                 output(out_x + x, out_y + y, c) = sample(chosen_patch_x + x, chosen_patch_y + y, c);
                             }
-                            
-                            //debug = false;
                         }
                     }
                 }
             }
-            }
         }
     }
-    cout << "output is " << output.size() << endl;
-    return output;
-}
+    cout << "i=" << i << endl;
+    // Recursively call transfer with a smaller overlap and different alpha
+    // Output of previous texture transfer iteration is now the input sample for the new iteration
+    	
+    char buffer[255];
+    sprintf(buffer, DATA_DIR "/output/face_rice_iter-%02d.png", i);
+    output.write(buffer);
 
+    return transfer(output, target, (int)(patch_size*.7), min(overlap, patch_size/2), tol, 0.8*(i-1)/(iters-1)+0.1, iters, i+1);
+}
+ 
